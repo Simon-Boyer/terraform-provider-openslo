@@ -1,254 +1,116 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 type MetadataModel struct {
-	Name        types.String `tfsdk:"name"`
-	DisplayName types.String `tfsdk:"display_name"`
-}
-
-var MetadataSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"name":         types.StringType,
-		"display_name": types.StringType,
-	},
+	Name        string `tfsdk:"name" yaml:"name"`
+	DisplayName string `tfsdk:"display_name" yaml:"displayName"`
 }
 
 type DataSourceModel struct {
-	Type              types.String  `tfsdk:"type"`
-	ConnectionDetails types.Map     `tfsdk:"connection_details"`
-	Metadata          MetadataModel `tfsdk:"metadata"`
-}
-
-var DataSourceSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description":        types.StringType,
-		"connection_details": types.MapType{},
-		"metadata":           MetadataSchema,
-	},
+	Type              string        `tfsdk:"type" yaml:"type"`
+	ConnectionDetails types.Map     `tfsdk:"connection_details" yaml:"connectionDetails"`
+	Metadata          MetadataModel `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type ServiceModel struct {
-	description types.String  `tfsdk:"description"`
-	Metadata    MetadataModel `tfsdk:"metadata"`
-}
-
-var ServiceSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description": types.StringType,
-		"metadata":    MetadataSchema,
-	},
+	Description string        `tfsdk:"description" yaml:"description"`
+	Metadata    MetadataModel `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type AlertConditionModel struct {
-	Description  types.String                      `tfsdk:"description"`
-	Severity     types.String                      `tfsdk:"severity"`
-	Condition    AlertConditionModelConditionModel `tfsdk:"condition"`
-	Metadata     MetadataModel                     `tfsdk:"metadata"`
-	ConditionRef types.String                      `tfsdk:"conditionRef"`
-}
-
-var AlertConditionSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description": types.StringType,
-		"severity":    types.StringType,
-		"condition":   AlertConditionModelConditionSchema,
-		"metadata":    MetadataSchema,
-	},
+	Description  string                            `tfsdk:"description" yaml:"description"`
+	Severity     string                            `tfsdk:"severity" yaml:"severity"`
+	Condition    AlertConditionModelConditionModel `tfsdk:"condition" yaml:"condition"`
+	Metadata     MetadataModel                     `tfsdk:"metadata" yaml:"metadata"`
+	ConditionRef string                            `tfsdk:"condition_ref" yaml:"conditionRef"`
 }
 
 type AlertConditionModelConditionModel struct {
-	Op             types.String `tfsdk:"op"`
-	Threshold      types.Number `tfsdk:"threshold"`
-	LookbackWindow types.String `tfsdk:"lookback_window"`
-	AlertAfter     types.String `tfsdk:"alert_after"`
-}
-
-var AlertConditionModelConditionSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"op":              types.StringType,
-		"threshold":       types.NumberType,
-		"lookback_window": types.StringType,
-		"alert_after":     types.StringType,
-		"metadata":        MetadataSchema,
-	},
+	Op             string  `tfsdk:"op" yaml:"op"`
+	Threshold      float64 `tfsdk:"threshold" yaml:"threshold"`
+	LookbackWindow string  `tfsdk:"lookback_window" yaml:"lookbackWindow"`
+	AlertAfter     string  `tfsdk:"alert_after" yaml:"alertAfter"`
 }
 
 type AlertNotificationTargetModel struct {
-	TargetRef   types.String  `tfsdk:"targetRef"`
-	Description types.String  `tfsdk:"description"`
-	Target      types.String  `tfsdk:"target"`
-	Metadata    MetadataModel `tfsdk:"metadata"`
-}
-
-var AlertNotificationTargetSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description": types.StringType,
-		"target":      types.StringType,
-		"metadata":    MetadataSchema,
-	},
+	TargetRef   string        `tfsdk:"target_ref" yaml:"targetRef"`
+	Description string        `tfsdk:"description" yaml:"description"`
+	Target      string        `tfsdk:"target" yaml:"target"`
+	Metadata    MetadataModel `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type AlertPolicyModel struct {
-	AlertPolicyRef      types.String                   `tfsdk:"alertPolicyRef"`
-	Description         types.String                   `tfsdk:"description"`
-	AlertWhenNoData     types.Bool                     `tfsdk:"alert_when_no_data"`
-	AlertWhenResolved   types.Bool                     `tfsdk:"alert_when_resolved"`
-	AlertWhenBreaching  types.Bool                     `tfsdk:"alert_when_breaching"`
-	Conditions          []AlertConditionModel          `tfsdk:"condition"`
-	NotificationTargets []AlertNotificationTargetModel `tfsdk:"notification_targets"`
-	Metadata            MetadataModel                  `tfsdk:"metadata"`
-}
-
-var AlertPolicySchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description":          types.StringType,
-		"alert_when_no_data":   types.BoolType,
-		"alert_when_resolved":  types.BoolType,
-		"alert_when_breaching": types.BoolType,
-		"condition":            AlertConditionModelConditionSchema,
-		"notification_targets": AlertNotificationTargetSchema,
-		"metadata":             MetadataSchema,
-	},
+	AlertPolicyRef      string                         `tfsdk:"alert_policy_ref" yaml:"alertPolicyRef"`
+	Description         string                         `tfsdk:"description" yaml:"description"`
+	AlertWhenNoData     bool                           `tfsdk:"alert_when_no_data" yaml:"alertWhenNoData"`
+	AlertWhenResolved   bool                           `tfsdk:"alert_when_resolved" yaml:"alertWhenResolved"`
+	AlertWhenBreaching  bool                           `tfsdk:"alert_when_breaching" yaml:"alertWhenBreaching"`
+	Conditions          []AlertConditionModel          `tfsdk:"condition" yaml:"condition"`
+	NotificationTargets []AlertNotificationTargetModel `tfsdk:"notification_targets" yaml:"notificationTargets"`
+	Metadata            MetadataModel                  `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type SLIModel struct {
-	Description     types.String     `tfsdk:"description"`
-	ThresholdMetric MetricModel      `tfsdk:"threshold_metric"`
-	RatioMetric     RatioMetricModel `tfsdk:"ratio_metric"`
-	Metadata        MetadataModel    `tfsdk:"metadata"`
-}
-
-var SLISchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description":      types.StringType,
-		"threshold_metric": MetricSchema,
-		"ratio_metric":     RatioMetricSchema,
-		"metadata":         MetadataSchema,
-	},
+	Description     string           `tfsdk:"description" yaml:"description"`
+	ThresholdMetric MetricModel      `tfsdk:"threshold_metric" yaml:"thresholdMetric"`
+	RatioMetric     RatioMetricModel `tfsdk:"ratio_metric" yaml:"ratioMetric"`
+	Metadata        MetadataModel    `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type MetricModel struct {
-	MetricSource MetricSourceModel `tfsdk:"metric_source"`
-}
-
-var MetricSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"metric_source": MetricSourceSchema,
-		"metadata":      MetadataSchema,
-	},
+	MetricSource MetricSourceModel `tfsdk:"metric_source" yaml:"metricSource"`
 }
 
 type MetricSourceModel struct {
-	MetricSourceRef types.String `tfsdk:"metric_source_ref"`
-	Type            types.String `tfsdk:"type"`
-	Spec            types.Object `tfsdk:"spec"`
-}
-
-var MetricSourceSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"metric_source_ref": types.StringType,
-		"type":              types.StringType,
-		"spec":              types.ObjectType{},
-	},
+	MetricSourceRef string       `tfsdk:"metric_source_ref" yaml:"metricSourceRef"`
+	Type            string       `tfsdk:"type" yaml:"type"`
+	Spec            types.Object `tfsdk:"spec" yaml:"spec"`
 }
 
 type RatioMetricModel struct {
-	counter types.Bool   `tfsdk:"counter"`
-	good    MetricModel  `tfsdk:"good"`
-	bad     MetricModel  `tfsdk:"bad"`
-	total   MetricModel  `tfsdk:"total"`
-	rawType types.String `tfsdk:"raw_type"`
-	raw     MetricModel  `tfsdk:"raw"`
-}
-
-var RatioMetricSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"counter":  types.BoolType,
-		"good":     MetricSchema,
-		"bad":      MetricSchema,
-		"total":    MetricSchema,
-		"raw_type": types.StringType,
-		"raw":      MetricSchema,
-	},
+	counter bool        `tfsdk:"counter" yaml:"counter"`
+	good    MetricModel `tfsdk:"good" yaml:"good"`
+	bad     MetricModel `tfsdk:"bad" yaml:"bad"`
+	total   MetricModel `tfsdk:"total" yaml:"total"`
+	rawType string      `tfsdk:"raw_type" yaml:"rawType"`
+	raw     MetricModel `tfsdk:"raw" yaml:"raw"`
 }
 
 type SLOModel struct {
-	Description     types.String       `tfsdk:"description"`
-	Service         ServiceModel       `tfsdk:"service"`
-	Indicator       SLIModel           `tfsdk:"indicator"`
-	IndicatorRef    types.String       `tfsdk:"indicatorRef"`
-	TimeWindow      TimeWindowModel    `tfsdk:"time_window"`
-	BudgetingMethod types.String       `tfsdk:"budgeting_method"`
-	Objectives      []ObjectiveModel   `tfsdk:"objectives"`
-	AlertPolicies   []AlertPolicyModel `tfsdk:"alert_policies"`
-	Metadata        MetadataModel      `tfsdk:"metadata"`
-}
-
-var SLOSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"description":      types.StringType,
-		"service":          ServiceSchema,
-		"indicator":        SLISchema,
-		"time_window":      TimeWindowSchema,
-		"budgeting_method": types.StringType,
-		"objectives":       ObjectiveSchema,
-		"alert_policies":   AlertPolicySchema,
-		"metadata":         MetadataSchema,
-	},
+	Description     string             `tfsdk:"description" yaml:"description"`
+	Service         ServiceModel       `tfsdk:"service" yaml:"service"`
+	Indicator       SLIModel           `tfsdk:"indicator" yaml:"indicator"`
+	IndicatorRef    string             `tfsdk:"indicator_ref" yaml:"indicatorRef"`
+	TimeWindow      TimeWindowModel    `tfsdk:"time_window" yaml:"timeWindow"`
+	BudgetingMethod string             `tfsdk:"budgeting_method" yaml:"budgetingMethod"`
+	Objectives      []ObjectiveModel   `tfsdk:"objectives" yaml:"objectives"`
+	AlertPolicies   []AlertPolicyModel `tfsdk:"alert_policies" yaml:"alertPolicies"`
+	Metadata        MetadataModel      `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type TimeWindowModel struct {
-	Duration  types.String  `tfsdk:"duration"`
-	Calendar  CalendarModel `tfsdk:"calendar"`
-	IsRolling types.Bool    `tfsdk:"is_rolling"`
-}
-
-var TimeWindowSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"duration":   types.StringType,
-		"calendar":   CalendarSchema,
-		"is_rolling": types.BoolType,
-	},
+	Duration  string        `tfsdk:"duration" yaml:"duration"`
+	Calendar  CalendarModel `tfsdk:"calendar" yaml:"calendar"`
+	IsRolling bool          `tfsdk:"is_rolling" yaml:"isRolling"`
 }
 
 type CalendarModel struct {
-	StartTime types.String `tfsdk:"start_time"`
-	TimeZone  types.String `tfsdk:"time_zone"`
-}
-
-var CalendarSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"start_time": types.StringType,
-		"time_zone":  types.StringType,
-	},
+	StartTime string `tfsdk:"start_time" yaml:"startTime"`
+	TimeZone  string `tfsdk:"time_zone" yaml:"timeZone"`
 }
 
 type ObjectiveModel struct {
-	DisplayName      types.String `tfsdk:"display_name"`
-	Op               types.String `tfsdk:"op"`
-	value            types.Number `tfsdk:"value"`
-	Target           types.Number `tfsdk:"target"`
-	TargetPercentage types.Number `tfsdk:"target_percentage"`
-	TimeSliceTarget  types.Number `tfsdk:"time_slice_target"`
-	TimeSliceWindow  types.Number `tfsdk:"time_slice_window"`
-	Indicator        SLIModel     `tfsdk:"indicator"`
-	CompositeWeight  types.Number `tfsdk:"composite_weight"`
-}
-
-var ObjectiveSchema = types.ObjectType{
-	AttrTypes: map[string]attr.Type{
-		"display_name":      types.StringType,
-		"op":                types.StringType,
-		"value":             types.NumberType,
-		"target":            types.NumberType,
-		"target_percentage": types.NumberType,
-		"time_slice_target": types.NumberType,
-		"time_slice_window": types.NumberType,
-		"indicator":         SLISchema,
-		"composite_weight":  types.NumberType,
-	},
+	DisplayName      string   `tfsdk:"display_name" yaml:"displayName"`
+	Op               string   `tfsdk:"op" yaml:"op"`
+	value            float64  `tfsdk:"value" yaml:"value"`
+	Target           float64  `tfsdk:"target" yaml:"target"`
+	TargetPercentage float64  `tfsdk:"target_percentage" yaml:"targetPercentage"`
+	TimeSliceTarget  float64  `tfsdk:"time_slice_target" yaml:"timeSliceTarget"`
+	TimeSliceWindow  float64  `tfsdk:"time_slice_window" yaml:"timeSliceWindow"`
+	IndicatorRef     string   `tfsdk:"indicator_ref" yaml:"indicatorRef"`
+	Indicator        SLIModel `tfsdk:"indicator" yaml:"indicator"`
+	CompositeWeight  float64  `tfsdk:"composite_weight" yaml:"compositeWeight"`
 }

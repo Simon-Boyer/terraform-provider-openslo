@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Simon-Boyer/openslo-terraform/internal/provider"
+	"github.com/Simon-Boyer/terraform-provider-openslo/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
