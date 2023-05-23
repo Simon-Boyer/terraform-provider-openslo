@@ -1,18 +1,17 @@
 package provider
 
-import (
-	"github.com/hashicorp/terraform-plugin-framework/types"
-)
-
 type MetadataModel struct {
 	Name        string `tfsdk:"name" yaml:"name"`
 	DisplayName string `tfsdk:"display_name" yaml:"displayName"`
 }
 
 type DataSourceModel struct {
-	Type              string        `tfsdk:"type" yaml:"type"`
-	ConnectionDetails types.Map     `tfsdk:"connection_details" yaml:"connectionDetails"`
-	Metadata          MetadataModel `tfsdk:"metadata" yaml:"metadata"`
+	Type              string            `tfsdk:"type" yaml:"type"`
+	ConnectionDetails map[string]string `tfsdk:"connection_details" yaml:"connectionDetails"`
+	Metadata          MetadataModel     `tfsdk:"metadata" yaml:"metadata"`
+	MetricSourceRef   string            `tfsdk:"metric_source_ref" yaml:"metricSourceRef"`
+	Spec              map[string]string `tfsdk:"spec" yaml:"spec"`
+	Description       string            `tfsdk:"description" yaml:"description"`
 }
 
 type ServiceModel struct {
@@ -23,7 +22,7 @@ type ServiceModel struct {
 type AlertConditionModel struct {
 	Description  string                            `tfsdk:"description" yaml:"description"`
 	Severity     string                            `tfsdk:"severity" yaml:"severity"`
-	Condition    AlertConditionModelConditionModel `tfsdk:"condition" yaml:"condition"`
+	Condition    AlertConditionModelConditionModel `tfsdk:"condition" yaml:"condition,omitempty"`
 	Metadata     MetadataModel                     `tfsdk:"metadata" yaml:"metadata"`
 	ConditionRef string                            `tfsdk:"condition_ref" yaml:"conditionRef"`
 }
@@ -48,43 +47,38 @@ type AlertPolicyModel struct {
 	AlertWhenNoData     bool                           `tfsdk:"alert_when_no_data" yaml:"alertWhenNoData"`
 	AlertWhenResolved   bool                           `tfsdk:"alert_when_resolved" yaml:"alertWhenResolved"`
 	AlertWhenBreaching  bool                           `tfsdk:"alert_when_breaching" yaml:"alertWhenBreaching"`
-	Conditions          []AlertConditionModel          `tfsdk:"condition" yaml:"condition"`
+	Conditions          []AlertConditionModel          `tfsdk:"conditions" yaml:"conditions"`
 	NotificationTargets []AlertNotificationTargetModel `tfsdk:"notification_targets" yaml:"notificationTargets"`
 	Metadata            MetadataModel                  `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type SLIModel struct {
 	Description     string           `tfsdk:"description" yaml:"description"`
-	ThresholdMetric MetricModel      `tfsdk:"threshold_metric" yaml:"thresholdMetric"`
-	RatioMetric     RatioMetricModel `tfsdk:"ratio_metric" yaml:"ratioMetric"`
+	ThresholdMetric MetricModel      `tfsdk:"threshold_metric" yaml:"thresholdMetric,omitempty"`
+	RatioMetric     RatioMetricModel `tfsdk:"ratio_metric" yaml:"ratioMetric,omitempty"`
 	Metadata        MetadataModel    `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type MetricModel struct {
-	MetricSource MetricSourceModel `tfsdk:"metric_source" yaml:"metricSource"`
-}
-
-type MetricSourceModel struct {
-	MetricSourceRef string       `tfsdk:"metric_source_ref" yaml:"metricSourceRef"`
-	Type            string       `tfsdk:"type" yaml:"type"`
-	Spec            types.Object `tfsdk:"spec" yaml:"spec"`
+	MetricSource DataSourceModel `tfsdk:"metric_source" yaml:"metricSource,omitempty"`
 }
 
 type RatioMetricModel struct {
-	counter bool        `tfsdk:"counter" yaml:"counter"`
-	good    MetricModel `tfsdk:"good" yaml:"good"`
-	bad     MetricModel `tfsdk:"bad" yaml:"bad"`
-	total   MetricModel `tfsdk:"total" yaml:"total"`
-	rawType string      `tfsdk:"raw_type" yaml:"rawType"`
-	raw     MetricModel `tfsdk:"raw" yaml:"raw"`
+	Counter bool        `tfsdk:"counter" yaml:"counter"`
+	Good    MetricModel `tfsdk:"good" yaml:"good,omitempty"`
+	Bad     MetricModel `tfsdk:"bad" yaml:"bad,omitempty"`
+	Total   MetricModel `tfsdk:"total" yaml:"total,omitempty"`
+	RawType string      `tfsdk:"raw_type" yaml:"rawType"`
+	Raw     MetricModel `tfsdk:"raw" yaml:"raw,omitempty"`
 }
 
 type SLOModel struct {
 	Description     string             `tfsdk:"description" yaml:"description"`
-	Service         ServiceModel       `tfsdk:"service" yaml:"service"`
-	Indicator       SLIModel           `tfsdk:"indicator" yaml:"indicator"`
+	Service         ServiceModel       `tfsdk:"service" yaml:"-"`
+	ServiceRef      string             `tfsdk:"service_ref" yaml:"service"`
+	Indicator       SLIModel           `tfsdk:"indicator" yaml:"indicator,omitempty"`
 	IndicatorRef    string             `tfsdk:"indicator_ref" yaml:"indicatorRef"`
-	TimeWindow      TimeWindowModel    `tfsdk:"time_window" yaml:"timeWindow"`
+	TimeWindow      []TimeWindowModel  `tfsdk:"time_window" yaml:"timeWindow"`
 	BudgetingMethod string             `tfsdk:"budgeting_method" yaml:"budgetingMethod"`
 	Objectives      []ObjectiveModel   `tfsdk:"objectives" yaml:"objectives"`
 	AlertPolicies   []AlertPolicyModel `tfsdk:"alert_policies" yaml:"alertPolicies"`
@@ -93,7 +87,7 @@ type SLOModel struct {
 
 type TimeWindowModel struct {
 	Duration  string        `tfsdk:"duration" yaml:"duration"`
-	Calendar  CalendarModel `tfsdk:"calendar" yaml:"calendar"`
+	Calendar  CalendarModel `tfsdk:"calendar" yaml:"calendar,omitempty"`
 	IsRolling bool          `tfsdk:"is_rolling" yaml:"isRolling"`
 }
 
@@ -105,12 +99,12 @@ type CalendarModel struct {
 type ObjectiveModel struct {
 	DisplayName      string   `tfsdk:"display_name" yaml:"displayName"`
 	Op               string   `tfsdk:"op" yaml:"op"`
-	value            float64  `tfsdk:"value" yaml:"value"`
+	Value            float64  `tfsdk:"value" yaml:"value"`
 	Target           float64  `tfsdk:"target" yaml:"target"`
 	TargetPercentage float64  `tfsdk:"target_percentage" yaml:"targetPercentage"`
 	TimeSliceTarget  float64  `tfsdk:"time_slice_target" yaml:"timeSliceTarget"`
 	TimeSliceWindow  float64  `tfsdk:"time_slice_window" yaml:"timeSliceWindow"`
 	IndicatorRef     string   `tfsdk:"indicator_ref" yaml:"indicatorRef"`
-	Indicator        SLIModel `tfsdk:"indicator" yaml:"indicator"`
+	Indicator        SLIModel `tfsdk:"indicator" yaml:"indicator,omitempty"`
 	CompositeWeight  float64  `tfsdk:"composite_weight" yaml:"compositeWeight"`
 }

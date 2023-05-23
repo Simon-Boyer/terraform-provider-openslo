@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/goccy/go-yaml"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"gopkg.in/yaml.v3"
 )
 
 const OPENSLO_VERSION = "openslo/v1"
@@ -39,6 +39,13 @@ type OpenSloDataSourceModel struct {
 	Slos                       map[string]SLOModel                     `tfsdk:"slos"`
 }
 
+type Test struct {
+	Kind       string
+	ApiVersion string
+	Metadata   MetadataModel
+	Spec       SLIModel
+}
+
 type YamlSpec struct {
 	Kind       string        `yaml:"kind"`
 	ApiVersion string        `yaml:"apiVersion"`
@@ -58,9 +65,12 @@ func (d *OpenSloDataSource) Metadata(ctx context.Context, req datasource.Metadat
 
 func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 
+	// We define schemas as variables so it can be reused as a nested schema
+	// The order here is important since a schema may refer to other schemas
+
 	var MetadataSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"name":         types.StringType,
+			"name":         types.StringType, // test
 			"display_name": types.StringType,
 		},
 	}
@@ -71,7 +81,12 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"connection_details": types.MapType{
 				ElemType: types.StringType,
 			},
-			"metadata": MetadataSchema,
+			"metadata":          MetadataSchema,
+			"metric_source_ref": types.StringType,
+			"spec": types.MapType{
+				ElemType: types.StringType,
+			},
+			"type": types.StringType,
 		},
 	}
 
@@ -88,16 +103,16 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"threshold":       types.NumberType,
 			"lookback_window": types.StringType,
 			"alert_after":     types.StringType,
-			"metadata":        MetadataSchema,
 		},
 	}
 
 	var AlertConditionSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"description": types.StringType,
-			"severity":    types.StringType,
-			"condition":   AlertConditionModelConditionSchema,
-			"metadata":    MetadataSchema,
+			"description":   types.StringType,
+			"severity":      types.StringType,
+			"condition":     AlertConditionModelConditionSchema,
+			"metadata":      MetadataSchema,
+			"condition_ref": types.StringType,
 		},
 	}
 
@@ -106,23 +121,13 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"description": types.StringType,
 			"target":      types.StringType,
 			"metadata":    MetadataSchema,
-		},
-	}
-
-	var MetricSourceSchema = types.ObjectType{
-		AttrTypes: map[string]attr.Type{
-			"metric_source_ref": types.StringType,
-			"type":              types.StringType,
-			"spec": types.MapType{
-				ElemType: types.StringType,
-			},
+			"target_ref":  types.StringType,
 		},
 	}
 
 	var MetricSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"metric_source": MetricSourceSchema,
-			"metadata":      MetadataSchema,
+			"metric_source": DataSourceSchema,
 		},
 	}
 
@@ -152,11 +157,14 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"alert_when_no_data":   types.BoolType,
 			"alert_when_resolved":  types.BoolType,
 			"alert_when_breaching": types.BoolType,
-			"condition":            AlertConditionModelConditionSchema,
+			"conditions": types.ListType{
+				ElemType: AlertConditionSchema,
+			},
 			"notification_targets": types.ListType{
 				ElemType: AlertNotificationTargetSchema,
 			},
-			"metadata": MetadataSchema,
+			"metadata":         MetadataSchema,
+			"alert_policy_ref": types.StringType,
 		},
 	}
 
@@ -186,15 +194,20 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"time_slice_window": types.NumberType,
 			"indicator":         SLISchema,
 			"composite_weight":  types.NumberType,
+			"indicator_ref":     types.StringType,
 		},
 	}
 
 	var SLOSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"description":      types.StringType,
-			"service":          ServiceSchema,
-			"indicator":        SLISchema,
-			"time_window":      TimeWindowSchema,
+			"description":   types.StringType,
+			"service":       ServiceSchema,
+			"service_ref":   types.StringType,
+			"indicator":     SLISchema,
+			"indicator_ref": types.StringType,
+			"time_window": types.ListType{
+				ElemType: TimeWindowSchema,
+			},
 			"budgeting_method": types.StringType,
 			"objectives": types.ListType{
 				ElemType: ObjectiveSchema,
@@ -206,10 +219,9 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		},
 	}
 
+	// This is the actual schema definition
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "OpenSlo data source",
-
+		MarkdownDescription: "OpenSlo data source. Please go to https://github.com/OpenSLO/OpenSLO for field definitions",
 		Attributes: map[string]schema.Attribute{
 			"yaml_input": schema.StringAttribute{
 				MarkdownDescription: "OpenSLO yaml content input",
@@ -295,65 +307,62 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := d.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read OpenSlo, got error: %s", err))
-	//     return
-	// }
-
-	// For the purposes of this OpenSlo code, hardcoding a response value to
-	// save into the Terraform state.
+	// We decode the yaml with 2 decoder iterators, so we can get the kind then unmarshal the yaml value
 
 	decKind := yaml.NewDecoder(bytes.NewReader([]byte(data.Yaml_input.ValueString())))
 	decType := yaml.NewDecoder(bytes.NewReader([]byte(data.Yaml_input.ValueString())))
 
 	for {
-
 		var doc YamlSpec
-		if decKind.Decode(&doc) == nil {
+		err := decKind.Decode(&doc)
+		if err == nil {
+			// Make sure we are dealing with an openslo document
 			if doc.ApiVersion == OPENSLO_VERSION {
+				var errType error
+				// Then we can unmarshal based on the kind
 				switch doc.Kind {
 				case "DataSource":
 					var typedDoc YamlSpecTyped[DataSourceModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Datasources[doc.Metadata.Name] = typedDoc.Spec
 				case "Service":
 					var typedDoc YamlSpecTyped[ServiceModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Services[doc.Metadata.Name] = typedDoc.Spec
 				case "AlertCondition":
 					var typedDoc YamlSpecTyped[AlertConditionModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Alert_conditions[doc.Metadata.Name] = typedDoc.Spec
 				case "AlertNotificationTarget":
 					var typedDoc YamlSpecTyped[AlertNotificationTargetModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Alert_notification_targets[doc.Metadata.Name] = typedDoc.Spec
 				case "AlertPolicy":
 					var typedDoc YamlSpecTyped[AlertPolicyModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Alert_policies[doc.Metadata.Name] = typedDoc.Spec
 				case "SLI":
 					var typedDoc YamlSpecTyped[SLIModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Slis[doc.Metadata.Name] = typedDoc.Spec
 				case "SLO":
 					var typedDoc YamlSpecTyped[SLOModel]
-					decType.Decode(&typedDoc)
+					errType = decType.Decode(&typedDoc)
 					typedDoc.Spec.Metadata = doc.Metadata
 					data.Slos[doc.Metadata.Name] = typedDoc.Spec
 				default:
 					resp.Diagnostics.AddError(
 						"Unexpected Kind", "Unknown kind: "+doc.Kind,
 					)
+				}
+				if errType != nil {
+					resp.Diagnostics.AddError("Decode Error", errType.Error())
 				}
 			}
 		} else {
@@ -381,11 +390,32 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		}
 	}
 
+	// Embed referenced objects for slis
+	for k := range data.Slis {
+		sli := data.Slis[k]
+		if sli.ThresholdMetric.MetricSource.MetricSourceRef != "" {
+			sli.ThresholdMetric.MetricSource = data.Datasources[sli.ThresholdMetric.MetricSource.MetricSourceRef]
+		}
+		if sli.RatioMetric.Bad.MetricSource.MetricSourceRef != "" {
+			sli.RatioMetric.Bad.MetricSource = data.Datasources[sli.RatioMetric.Bad.MetricSource.MetricSourceRef]
+		}
+		if sli.RatioMetric.Good.MetricSource.MetricSourceRef != "" {
+			sli.RatioMetric.Good.MetricSource = data.Datasources[sli.RatioMetric.Good.MetricSource.MetricSourceRef]
+		}
+		if sli.RatioMetric.Raw.MetricSource.MetricSourceRef != "" {
+			sli.RatioMetric.Raw.MetricSource = data.Datasources[sli.RatioMetric.Raw.MetricSource.MetricSourceRef]
+		}
+		data.Slis[k] = sli
+	}
+
 	// Embed referenced objects for slos
 	for k := range data.Slos {
 		slo := data.Slos[k]
 		if slo.IndicatorRef != "" {
 			slo.Indicator = data.Slis[slo.IndicatorRef]
+		}
+		if slo.ServiceRef != "" {
+			slo.Service = data.Services[slo.ServiceRef]
 		}
 		for j := range slo.AlertPolicies {
 			alertPolicy := slo.AlertPolicies[j]

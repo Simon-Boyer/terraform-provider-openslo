@@ -1,53 +1,35 @@
-# Terraform Provider Scaffolding (Terraform Plugin Framework)
+# OpenSLO Terraform provider
 
-_This template repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework). The template repository built on the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) can be found at [terraform-provider-scaffolding](https://github.com/hashicorp/terraform-provider-scaffolding). See [Which SDK Should I Use?](https://www.terraform.io/docs/plugin/which-sdk.html) in the Terraform documentation for additional information._
+This terraform provider allows you to ingest OpenSLO (https://github.com/OpenSLO/OpenSLO) definitions (as yaml) using a data_source.
+It provides the complete OpenSLO specification a terraform/HCL objects that can then be used
+to manage your observabilty tooling.
 
-This repository is a *template* for a [Terraform](https://www.terraform.io) provider. It is intended as a starting point for creating Terraform providers, containing:
+To use it, put all the yaml files in a single string, delimited by `\n---\n` and pass it to the `openslo` data_source.
+Ideally everything is in a single data_source as it allows it to resolve links between the definitions.
 
-- A resource and a data source (`internal/provider/`),
-- Examples (`examples/`) and generated documentation (`docs/`),
-- Miscellaneous meta files.
+## How to use
 
-These files contain boilerplate code that you will need to edit to create your own Terraform provider. Tutorials for creating Terraform providers can be found on the [HashiCorp Learn](https://learn.hashicorp.com/collections/terraform/providers-plugin-framework) platform. _Terraform Plugin Framework specific guides are titled accordingly._
+```hcl
+terraform {
+  required_providers {
+    openslo = {
+      source = "registry.terraform.io/arctiq/openslo"
+    }
+  }
+}
 
-Please see the [GitHub template repository documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template) for how to create a new repository from this template on GitHub.
+data "openslo_openslo" "definition" {
+  yaml_input = <<EOF
+  <YOUR YAML DEFINITIONS>
+EOF
+}
 
-Once you've written your provider, you'll want to [publish it on the Terraform Registry](https://www.terraform.io/docs/registry/providers/publishing.html) so that others can use it.
+...
 
-## Requirements
-
-- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
-- [Go](https://golang.org/doc/install) >= 1.19
-
-## Building The Provider
-
-1. Clone the repository
-1. Enter the repository directory
-1. Build the provider using the Go `install` command:
-
-```shell
-go install
+something = openslo_openslo.definition.object_kind["object_name"].object_property
 ```
 
-## Adding Dependencies
-
-This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
-Please see the Go documentation for the most up to date information about using Go modules.
-
-To add a new dependency `github.com/author/dependency` to your Terraform provider:
-
-```shell
-go get github.com/author/dependency
-go mod tidy
-```
-
-Then commit the changes to `go.mod` and `go.sum`.
-
-## Using the provider
-
-Fill this in for each provider
-
-## Developing the Provider
+## Contributing
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
 
@@ -62,3 +44,32 @@ In order to run the full suite of Acceptance tests, run `make testacc`.
 ```shell
 make testacc
 ```
+
+### Requirements
+
+- [Terraform](https://www.terraform.io/downloads.html) >= 1.0
+- [Go](https://golang.org/doc/install) >= 1.19
+
+### Building The Provider
+
+1. Clone the repository
+1. Enter the repository directory
+1. Build the provider using the Go `install` command:
+
+```shell
+go install
+```
+
+### Adding Dependencies
+
+This provider uses [Go modules](https://github.com/golang/go/wiki/Modules).
+Please see the Go documentation for the most up to date information about using Go modules.
+
+To add a new dependency `github.com/author/dependency` to your Terraform provider:
+
+```shell
+go get github.com/author/dependency
+go mod tidy
+```
+
+Then commit the changes to `go.mod` and `go.sum`.

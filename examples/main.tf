@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     openslo = {
-      source = "arctiq/openslo"
+      source = "registry.terraform.io/arctiq/openslo"
     }
   }
 }
@@ -16,6 +16,7 @@ metadata:
 spec:
   description: string 
   ratioMetric:
+    counter: true
     good:
       metricSource:
         type: datadog
@@ -92,6 +93,5 @@ EOF
 }
 
 output "test" {
-  value = data.openslo_openslo.test
-
+  value = data.openslo_openslo.test.slos["string"].objectives[0]
 }

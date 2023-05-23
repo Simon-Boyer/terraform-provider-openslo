@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 // Ensure ScaffoldingProvider satisfies various provider interfaces.
@@ -22,11 +21,6 @@ type OpenSloProvider struct {
 	version string
 }
 
-// OpenSloProviderModel describes the provider data model.
-type OpenSloProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
-}
-
 func (p *OpenSloProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "openslo"
 	resp.Version = p.version
@@ -34,12 +28,7 @@ func (p *OpenSloProvider) Metadata(ctx context.Context, req provider.MetadataReq
 
 func (p *OpenSloProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
-			},
-		},
+		Attributes: map[string]schema.Attribute{},
 	}
 }
 
@@ -48,9 +37,6 @@ func (p *OpenSloProvider) Configure(ctx context.Context, req provider.ConfigureR
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
 
 	// Example client configuration for data sources and resources
 	client := http.DefaultClient
