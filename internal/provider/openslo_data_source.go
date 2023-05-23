@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/http"
+	"io"
 
 	"github.com/goccy/go-yaml"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -15,16 +15,12 @@ import (
 
 const OPENSLO_VERSION = "openslo/v1"
 
-// Ensure provider defined types fully satisfy framework interfaces.
-var _ datasource.DataSource = &OpenSloDataSource{}
-
 func NewOpenSloDataSource() datasource.DataSource {
 	return &OpenSloDataSource{}
 }
 
 // OpenSloDataSource defines the data source implementation.
 type OpenSloDataSource struct {
-	client *http.Client
 }
 
 // OpenSloDataSourceModel describes the data source data model.
@@ -272,19 +268,6 @@ func (d *OpenSloDataSource) Configure(ctx context.Context, req datasource.Config
 	if req.ProviderData == nil {
 		return
 	}
-
-	client, ok := req.ProviderData.(*http.Client)
-
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
-
-		return
-	}
-
-	d.client = client
 }
 
 func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -309,64 +292,76 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	// We decode the yaml with 2 decoder iterators, so we can get the kind then unmarshal the yaml value
 
-	decKind := yaml.NewDecoder(bytes.NewReader([]byte(data.Yaml_input.ValueString())))
-	decType := yaml.NewDecoder(bytes.NewReader([]byte(data.Yaml_input.ValueString())))
+	yamlBytes := []byte(data.Yaml_input.ValueString())
+	decKind := yaml.NewDecoder(bytes.NewReader(yamlBytes))
+	decType := yaml.NewDecoder(bytes.NewReader(yamlBytes))
 
 	for {
 		var doc YamlSpec
 		err := decKind.Decode(&doc)
-		if err == nil {
-			// Make sure we are dealing with an openslo document
-			if doc.ApiVersion == OPENSLO_VERSION {
-				var errType error
-				// Then we can unmarshal based on the kind
-				switch doc.Kind {
-				case "DataSource":
-					var typedDoc YamlSpecTyped[DataSourceModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Datasources[doc.Metadata.Name] = typedDoc.Spec
-				case "Service":
-					var typedDoc YamlSpecTyped[ServiceModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Services[doc.Metadata.Name] = typedDoc.Spec
-				case "AlertCondition":
-					var typedDoc YamlSpecTyped[AlertConditionModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Alert_conditions[doc.Metadata.Name] = typedDoc.Spec
-				case "AlertNotificationTarget":
-					var typedDoc YamlSpecTyped[AlertNotificationTargetModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Alert_notification_targets[doc.Metadata.Name] = typedDoc.Spec
-				case "AlertPolicy":
-					var typedDoc YamlSpecTyped[AlertPolicyModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Alert_policies[doc.Metadata.Name] = typedDoc.Spec
-				case "SLI":
-					var typedDoc YamlSpecTyped[SLIModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Slis[doc.Metadata.Name] = typedDoc.Spec
-				case "SLO":
-					var typedDoc YamlSpecTyped[SLOModel]
-					errType = decType.Decode(&typedDoc)
-					typedDoc.Spec.Metadata = doc.Metadata
-					data.Slos[doc.Metadata.Name] = typedDoc.Spec
-				default:
-					resp.Diagnostics.AddError(
-						"Unexpected Kind", "Unknown kind: "+doc.Kind,
-					)
-				}
-				if errType != nil {
-					resp.Diagnostics.AddError("Decode Error", errType.Error())
-				}
+
+		// Break out of the loop if error or EOF
+		if err != nil {
+			if err != io.EOF {
+				resp.Diagnostics.AddError("Failed to decode yaml", err.Error())
+				return
 			}
-		} else {
 			break
+		}
+
+		// Make sure we are dealing with an openslo document
+		if doc.ApiVersion != OPENSLO_VERSION {
+			resp.Diagnostics.AddWarning("Unexpected api version", fmt.Sprintf("Expected %s, got %s", OPENSLO_VERSION, doc.ApiVersion))
+			continue
+		}
+
+		// Then we can unmarshal based on the kind
+		switch doc.Kind {
+		case "DataSource":
+			var typedDoc YamlSpecTyped[DataSourceModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Datasources[doc.Metadata.Name] = typedDoc.Spec
+		case "Service":
+			var typedDoc YamlSpecTyped[ServiceModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Services[doc.Metadata.Name] = typedDoc.Spec
+		case "AlertCondition":
+			var typedDoc YamlSpecTyped[AlertConditionModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Alert_conditions[doc.Metadata.Name] = typedDoc.Spec
+		case "AlertNotificationTarget":
+			var typedDoc YamlSpecTyped[AlertNotificationTargetModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Alert_notification_targets[doc.Metadata.Name] = typedDoc.Spec
+		case "AlertPolicy":
+			var typedDoc YamlSpecTyped[AlertPolicyModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Alert_policies[doc.Metadata.Name] = typedDoc.Spec
+		case "SLI":
+			var typedDoc YamlSpecTyped[SLIModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Slis[doc.Metadata.Name] = typedDoc.Spec
+		case "SLO":
+			var typedDoc YamlSpecTyped[SLOModel]
+			err = decType.Decode(&typedDoc)
+			typedDoc.Spec.Metadata = doc.Metadata
+			data.Slos[doc.Metadata.Name] = typedDoc.Spec
+		default:
+			resp.Diagnostics.AddError(
+				"Unexpected Kind", "Unknown kind: "+doc.Kind,
+			)
+			return
+		}
+
+		if err != nil {
+			resp.Diagnostics.AddError("Decode Error", err.Error())
+			return
 		}
 	}
 
