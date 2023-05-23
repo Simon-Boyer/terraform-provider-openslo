@@ -1,4 +1,4 @@
-module github.com/Simon-Boyer/terraform-provider-openslo
+module github.com/simon_boyer/terraform-provider-openslo
 
 go 1.19
 

@@ -13,7 +13,7 @@ Ideally everything is in a single data_source as it allows it to resolve links b
 terraform {
   required_providers {
     openslo = {
-      source = "registry.terraform.io/arctiq/openslo"
+      source = "registry.terraform.io/simon_boyer/openslo"
     }
   }
 }

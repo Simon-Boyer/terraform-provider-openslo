@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     openslo = {
-      source = "registry.terraform.io/arctiq/openslo"
+      source = "registry.terraform.io/simon_boyer/openslo"
     }
   }
 }

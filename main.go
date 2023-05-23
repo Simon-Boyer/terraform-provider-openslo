@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/Simon-Boyer/terraform-provider-openslo/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/simon_boyer/terraform-provider-openslo/internal/provider"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -36,7 +36,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		// TODO: Update this string with the published name of your provider.
-		Address: "registry.terraform.io/arctiq/openslo",
+		Address: "registry.terraform.io/simon_boyer/openslo",
 		Debug:   debug,
 	}
 
