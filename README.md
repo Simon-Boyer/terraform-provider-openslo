@@ -20,11 +20,11 @@ terraform {
 
 data "openslo_openslo" "definition" {
   yaml_input = <<EOF
-  <OPENSELO YAML 1>
+  <OPENSLO YAML 1>
   ---
-  <OPENSELO YAML 2>
+  <OPENSLO YAML 2>
   ---
-  <OPENSELO YAML 3>
+  <OPENSLO YAML 3>
 EOF
 }
 
