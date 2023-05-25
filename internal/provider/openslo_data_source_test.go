@@ -523,3 +523,251 @@ spec:
 		t.Errorf("Expected %#v, but got %#v", expected, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
 	}
 }
+
+func TestOpenSLOAll_shouldbeValid_withRefLinks(t *testing.T) {
+
+	// given
+	yamlSpec := `
+apiVersion: openslo/v1
+kind: DataSource
+metadata:
+  name: default
+  displayName: Default
+spec:
+  type: datadog
+  spec:
+    query: sum:api.requests.status_ok{*}.as_count()
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: default-success-rate
+  displayName: string
+spec:
+  description: string 
+  ratioMetric:
+    counter: true
+    good:
+      metricSource:
+        metricSourceRef: default
+    total:
+      metricSource:
+        type: datadog
+        spec:
+          query: sum:api.requests{*}.as_count()
+---
+apiVersion: openslo/v1
+kind: AlertCondition
+metadata:
+  name: string
+  displayName: string
+spec:
+  description: string
+  severity: string 
+  condition:
+    kind: string
+    op: enum
+    threshold: number
+    lookbackWindow: 1h
+    alertAfter: 5m
+---
+apiVersion: openslo/v1
+kind: AlertNotificationTarget
+metadata:
+  name: OnCallDevopsMailNotification
+spec:
+  description: Notifies by a mail message to the on-call devops mailing group
+  target: email
+---
+apiVersion: openslo/v1
+kind: AlertPolicy
+metadata:
+  name: default
+  displayName: Alert Policy
+spec:
+  conditions:
+  - conditionRef: string
+  notificationTargets:
+  - targetRef: OnCallDevopsMailNotification
+---
+apiVersion: openslo/v1
+kind: Service
+metadata:
+  name: my-service
+  displayName: My Service
+spec:
+  description: This service does blablabla
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: string
+  displayName: string
+spec:
+  description: My service returns good responses 99.5 of the time
+  service: my-service
+  indicatorRef: default-success-rate
+  timeWindow:
+  - duration: 30d
+  budgetingMethod: Occurrences
+  alertPolicies:
+  - alertPolicyRef: default
+  objectives:
+  - target: 0.995
+`
+
+	dataSource := DataSourceModel{
+		Metadata: MetadataModel{
+			Name:        "default",
+			DisplayName: "Default",
+		},
+		Type: "datadog",
+		Spec: map[string]string{
+			"query": "sum:api.requests.status_ok{*}.as_count()",
+		},
+	}
+	dataSourceWithRef := dataSource
+	dataSourceWithRef.MetricSourceRef = "default"
+
+	service := ServiceModel{
+		Metadata: MetadataModel{
+			Name:        "my-service",
+			DisplayName: "My Service",
+		},
+		Description: "This service does blablabla",
+	}
+
+	alertCondition := AlertConditionModel{
+		Metadata: MetadataModel{
+			Name:        "string",
+			DisplayName: "string",
+		},
+		Description: "string",
+		Severity:    "string",
+		Condition: AlertConditionModelCondition{
+			Kind:           "string",
+			Op:             "enum",
+			Threshold:      1,
+			LookbackWindow: "1h",
+			AlertAfter:     "5m",
+		},
+	}
+	alertConditionWithRef := alertCondition
+	alertConditionWithRef.ConditionRef = "string"
+
+	alertNotificationTarget := AlertNotificationTargetModel{
+		Metadata: MetadataModel{
+			Name:        "OnCallDevopsMailNotification",
+			DisplayName: "Display name",
+		},
+		Target: "email",
+	}
+	alertNotificationTargetWithRef := alertNotificationTarget
+	alertNotificationTargetWithRef.TargetRef = "OnCallDevopsMailNotification"
+
+	alertPolicy := AlertPolicyModel{
+		Metadata: MetadataModel{
+			Name:        "default",
+			DisplayName: "Alert Policy",
+		},
+		Conditions: []AlertConditionModel{
+			alertConditionWithRef,
+		},
+		NotificationTargets: []AlertNotificationTargetModel{
+			alertNotificationTargetWithRef,
+		},
+	}
+	alertPolicyWithRef := alertPolicy
+	alertPolicyWithRef.AlertPolicyRef = "string"
+
+	sli := SLIModel{
+		Metadata: MetadataModel{
+			Name:        "default-success-rate",
+			DisplayName: "string",
+		},
+		Description: "string",
+		RatioMetric: RatioMetricModel{
+			Counter: true,
+			Good: MetricModel{
+				MetricSource: dataSourceWithRef,
+			},
+			Total: MetricModel{
+				MetricSource: DataSourceModel{
+					Spec: map[string]string{
+						"query": "sum:api.requests{*}.as_count()",
+					},
+				},
+			},
+		},
+	}
+
+	slo := SLOModel{
+		Metadata: MetadataModel{
+			Name:        "string",
+			DisplayName: "string",
+		},
+		Description:  "My service returns good responses 99.5 of the time",
+		Service:      service,
+		ServiceRef:   "my-service",
+		Indicator:    sli,
+		IndicatorRef: "default-success-rate",
+		TimeWindow: []TimeWindowModel{
+			{
+				Duration: "30d",
+			},
+		},
+		BudgetingMethod: "Occurrences",
+		AlertPolicies: []AlertPolicyModel{
+			alertPolicyWithRef,
+		},
+		Objectives: []ObjectiveModel{
+			{
+				Target: 0.995,
+			},
+		},
+	}
+
+	// when
+	openslo, err := GetOpenSloData(yamlSpec, diag.Diagnostics{})
+
+	// then
+	if err != nil {
+		t.Error(err)
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Services["my-service"], service) {
+		t.Errorf("Expected %#v, but got %#v", service, openslo.Alert_conditions["my-service"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Slos["string"], slo) {
+		t.Errorf("Expected %#v, but got %#v", slo, openslo.Slos["string"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Datasources["default"], dataSource) {
+		t.Errorf("Expected %#v, but got %#v", dataSource, openslo.Datasources["default"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Alert_conditions["string"], alertCondition) {
+		t.Errorf("Expected %#v, but got %#v", alertCondition, openslo.Alert_conditions["string"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], alertNotificationTarget) {
+		t.Errorf("Expected %#v, but got %#v", alertNotificationTarget, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Alert_policies["default"], alertPolicy) {
+		t.Errorf("Expected %#v, but got %#v", alertPolicy, openslo.Alert_policies["default"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Slis["default-success-rate"], sli) {
+		t.Errorf("Expected %#v, but got %#v", sli, openslo.Slis["default-success-rate"])
+	}
+
+}
