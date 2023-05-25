@@ -1,5 +1,18 @@
 package provider
 
+type YamlSpec struct {
+	Kind       string        `yaml:"kind"`
+	ApiVersion string        `yaml:"apiVersion"`
+	Metadata   MetadataModel `yaml:"metadata"`
+}
+
+type YamlSpecTyped[T any] struct {
+	Kind       string
+	ApiVersion string
+	Metadata   MetadataModel
+	Spec       T
+}
+
 type MetadataModel struct {
 	Name        string `tfsdk:"name" yaml:"name"`
 	DisplayName string `tfsdk:"display_name" yaml:"displayName"`
@@ -19,19 +32,27 @@ type ServiceModel struct {
 	Metadata    MetadataModel `tfsdk:"metadata" yaml:"metadata"`
 }
 
-type AlertConditionModel struct {
-	Description  string                            `tfsdk:"description" yaml:"description"`
-	Severity     string                            `tfsdk:"severity" yaml:"severity"`
-	Condition    AlertConditionModelConditionModel `tfsdk:"condition" yaml:"condition,omitempty"`
-	Metadata     MetadataModel                     `tfsdk:"metadata" yaml:"metadata"`
-	ConditionRef string                            `tfsdk:"condition_ref" yaml:"conditionRef"`
-}
-
-type AlertConditionModelConditionModel struct {
+type AlertConditionModelCondition struct {
+	Kind           string  `tfsdk:"kind" yaml:"kind"`
 	Op             string  `tfsdk:"op" yaml:"op"`
 	Threshold      float64 `tfsdk:"threshold" yaml:"threshold"`
 	LookbackWindow string  `tfsdk:"lookback_window" yaml:"lookbackWindow"`
 	AlertAfter     string  `tfsdk:"alert_after" yaml:"alertAfter"`
+}
+
+type AlertConditionModel struct {
+	Metadata     MetadataModel                `tfsdk:"metadata" yaml:"metadata"`
+	Description  string                       `tfsdk:"description" yaml:"description"`
+	Severity     string                       `tfsdk:"severity" yaml:"severity"`
+	Condition    AlertConditionModelCondition `tfsdk:"condition" yaml:"condition,omitempty"`
+	ConditionRef string                       `tfsdk:"condition_ref" yaml:"conditionRef"`
+}
+
+type AlertConditionModelWrapper struct {
+	Kind         string        `yaml:"kind"`
+	Metadata     MetadataModel `yaml:"metadata"`
+	Spec         AlertConditionModel
+	ConditionRef string `tfsdk:"condition_ref" yaml:"conditionRef"`
 }
 
 type AlertNotificationTargetModel struct {
@@ -47,9 +68,17 @@ type AlertPolicyModel struct {
 	AlertWhenNoData     bool                           `tfsdk:"alert_when_no_data" yaml:"alertWhenNoData"`
 	AlertWhenResolved   bool                           `tfsdk:"alert_when_resolved" yaml:"alertWhenResolved"`
 	AlertWhenBreaching  bool                           `tfsdk:"alert_when_breaching" yaml:"alertWhenBreaching"`
-	Conditions          []AlertConditionModel          `tfsdk:"conditions" yaml:"conditions"`
+	Conditions          []AlertConditionModel          `tfsdk:"conditions" yaml:"-"`
+	ConditionsInternal  []AlertConditionModelWrapper   `tfsdk:"-" yaml:"conditions"`
 	NotificationTargets []AlertNotificationTargetModel `tfsdk:"notification_targets" yaml:"notificationTargets"`
 	Metadata            MetadataModel                  `tfsdk:"metadata" yaml:"metadata"`
+}
+
+type AlertPolicyModelWrapper struct {
+	Kind           string           `yaml:"kind"`
+	Metadata       MetadataModel    `yaml:"metadata"`
+	Spec           AlertPolicyModel `yaml:"spec"`
+	AlertPolicyRef string           `yaml:"alertPolicyRef"`
 }
 
 type SLIModel struct {
@@ -73,16 +102,18 @@ type RatioMetricModel struct {
 }
 
 type SLOModel struct {
-	Description     string             `tfsdk:"description" yaml:"description"`
-	Service         ServiceModel       `tfsdk:"service" yaml:"-"`
-	ServiceRef      string             `tfsdk:"service_ref" yaml:"service"`
-	Indicator       SLIModel           `tfsdk:"indicator" yaml:"indicator,omitempty"`
-	IndicatorRef    string             `tfsdk:"indicator_ref" yaml:"indicatorRef"`
-	TimeWindow      []TimeWindowModel  `tfsdk:"time_window" yaml:"timeWindow"`
-	BudgetingMethod string             `tfsdk:"budgeting_method" yaml:"budgetingMethod"`
-	Objectives      []ObjectiveModel   `tfsdk:"objectives" yaml:"objectives"`
-	AlertPolicies   []AlertPolicyModel `tfsdk:"alert_policies" yaml:"alertPolicies"`
-	Metadata        MetadataModel      `tfsdk:"metadata" yaml:"metadata"`
+	Description           string                    `tfsdk:"description" yaml:"description"`
+	Service               ServiceModel              `tfsdk:"service" yaml:"-"`
+	ServiceRef            string                    `tfsdk:"service_ref" yaml:"service"`
+	Indicator             SLIModel                  `tfsdk:"indicator" yaml:"-"`
+	IndicatorInternal     YamlSpecTyped[SLIModel]   `tfsdk:"-" yaml:"indicator,omitempty"`
+	IndicatorRef          string                    `tfsdk:"indicator_ref" yaml:"indicatorRef"`
+	TimeWindow            []TimeWindowModel         `tfsdk:"time_window" yaml:"timeWindow"`
+	BudgetingMethod       string                    `tfsdk:"budgeting_method" yaml:"budgetingMethod"`
+	Objectives            []ObjectiveModel          `tfsdk:"objectives" yaml:"objectives"`
+	AlertPolicies         []AlertPolicyModel        `tfsdk:"alert_policies" yaml:"-"`
+	AlertPoliciesInternal []AlertPolicyModelWrapper `tfsdk:"-" yaml:"alertPolicies"`
+	Metadata              MetadataModel             `tfsdk:"metadata" yaml:"metadata"`
 }
 
 type TimeWindowModel struct {
@@ -97,14 +128,15 @@ type CalendarModel struct {
 }
 
 type ObjectiveModel struct {
-	DisplayName      string   `tfsdk:"display_name" yaml:"displayName"`
-	Op               string   `tfsdk:"op" yaml:"op"`
-	Value            float64  `tfsdk:"value" yaml:"value"`
-	Target           float64  `tfsdk:"target" yaml:"target"`
-	TargetPercentage float64  `tfsdk:"target_percentage" yaml:"targetPercentage"`
-	TimeSliceTarget  float64  `tfsdk:"time_slice_target" yaml:"timeSliceTarget"`
-	TimeSliceWindow  float64  `tfsdk:"time_slice_window" yaml:"timeSliceWindow"`
-	IndicatorRef     string   `tfsdk:"indicator_ref" yaml:"indicatorRef"`
-	Indicator        SLIModel `tfsdk:"indicator" yaml:"indicator,omitempty"`
-	CompositeWeight  float64  `tfsdk:"composite_weight" yaml:"compositeWeight"`
+	DisplayName       string                  `tfsdk:"display_name" yaml:"displayName"`
+	Op                string                  `tfsdk:"op" yaml:"op"`
+	Value             float64                 `tfsdk:"value" yaml:"value"`
+	Target            float64                 `tfsdk:"target" yaml:"target"`
+	TargetPercent     float64                 `tfsdk:"target_percentage" yaml:"targetPercent"`
+	TimeSliceTarget   float64                 `tfsdk:"time_slice_target" yaml:"timeSliceTarget"`
+	TimeSliceWindow   string                  `tfsdk:"time_slice_window" yaml:"timeSliceWindow"`
+	IndicatorRef      string                  `tfsdk:"indicator_ref" yaml:"indicatorRef"`
+	Indicator         SLIModel                `tfsdk:"indicator" yaml:"-"`
+	IndicatorInternal YamlSpecTyped[SLIModel] `tfsdk:"-" yaml:"indicator,omitempty"`
+	CompositeWeight   float64                 `tfsdk:"composite_weight" yaml:"compositeWeight"`
 }

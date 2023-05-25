@@ -3,6 +3,7 @@ package provider
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -33,26 +35,6 @@ type OpenSloDataSourceModel struct {
 	Alert_policies             map[string]AlertPolicyModel             `tfsdk:"alert_policies"`
 	Slis                       map[string]SLIModel                     `tfsdk:"slis"`
 	Slos                       map[string]SLOModel                     `tfsdk:"slos"`
-}
-
-type Test struct {
-	Kind       string
-	ApiVersion string
-	Metadata   MetadataModel
-	Spec       SLIModel
-}
-
-type YamlSpec struct {
-	Kind       string        `yaml:"kind"`
-	ApiVersion string        `yaml:"apiVersion"`
-	Metadata   MetadataModel `yaml:"metadata"`
-}
-
-type YamlSpecTyped[T any] struct {
-	Kind       string
-	ApiVersion string
-	Metadata   MetadataModel
-	Spec       T
 }
 
 func (d *OpenSloDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -95,6 +77,7 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 
 	var AlertConditionModelConditionSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
+			"kind":            types.StringType,
 			"op":              types.StringType,
 			"threshold":       types.NumberType,
 			"lookback_window": types.StringType,
@@ -187,7 +170,7 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"target":            types.NumberType,
 			"target_percentage": types.NumberType,
 			"time_slice_target": types.NumberType,
-			"time_slice_window": types.NumberType,
+			"time_slice_window": types.StringType,
 			"indicator":         SLISchema,
 			"composite_weight":  types.NumberType,
 			"indicator_ref":     types.StringType,
@@ -275,8 +258,22 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &readData)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	data, err := GetOpenSloData(readData.Yaml_input.String(), resp.Diagnostics)
+	if err != nil {
+		return
+	}
+
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloDataSourceModel, error) {
 	data := OpenSloDataSourceModel{
-		Yaml_input:                 readData.Yaml_input,
+		Yaml_input:                 types.StringValue(yamlInput),
 		Datasources:                map[string]DataSourceModel{},
 		Services:                   map[string]ServiceModel{},
 		Slis:                       map[string]SLIModel{},
@@ -284,10 +281,6 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		Alert_conditions:           map[string]AlertConditionModel{},
 		Alert_notification_targets: map[string]AlertNotificationTargetModel{},
 		Alert_policies:             map[string]AlertPolicyModel{},
-	}
-
-	if resp.Diagnostics.HasError() {
-		return
 	}
 
 	// We decode the yaml with 2 decoder iterators, so we can get the kind then unmarshal the yaml value
@@ -303,15 +296,15 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		// Break out of the loop if error or EOF
 		if err != nil {
 			if err != io.EOF {
-				resp.Diagnostics.AddError("Failed to decode yaml", err.Error())
-				return
+				diagnostics.AddError("Failed to decode yaml", err.Error())
+				return data, err
 			}
 			break
 		}
 
 		// Make sure we are dealing with an openslo document
 		if doc.ApiVersion != OPENSLO_VERSION {
-			resp.Diagnostics.AddWarning("Unexpected api version", fmt.Sprintf("Expected %s, got %s", OPENSLO_VERSION, doc.ApiVersion))
+			diagnostics.AddWarning("Unexpected api version", fmt.Sprintf("Expected %s, got %s", OPENSLO_VERSION, doc.ApiVersion))
 			continue
 		}
 
@@ -341,6 +334,17 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			var typedDoc YamlSpecTyped[AlertPolicyModel]
 			err = decType.Decode(&typedDoc)
 			typedDoc.Spec.Metadata = doc.Metadata
+			for _, cond := range typedDoc.Spec.ConditionsInternal {
+				if typedDoc.Spec.ConditionsInternal[0].Kind != "" {
+					cond.Spec.Metadata = cond.Metadata
+					typedDoc.Spec.Conditions = append(typedDoc.Spec.Conditions, cond.Spec)
+				} else {
+					typedDoc.Spec.Conditions = append(typedDoc.Spec.Conditions, AlertConditionModel{
+						ConditionRef: cond.ConditionRef,
+					})
+				}
+			}
+			typedDoc.Spec.ConditionsInternal = nil
 			data.Alert_policies[doc.Metadata.Name] = typedDoc.Spec
 		case "SLI":
 			var typedDoc YamlSpecTyped[SLIModel]
@@ -351,17 +355,52 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 			var typedDoc YamlSpecTyped[SLOModel]
 			err = decType.Decode(&typedDoc)
 			typedDoc.Spec.Metadata = doc.Metadata
+			if typedDoc.Spec.IndicatorInternal.Kind != "" {
+				typedDoc.Spec.Indicator = typedDoc.Spec.IndicatorInternal.Spec
+				typedDoc.Spec.Indicator.Metadata = typedDoc.Spec.IndicatorInternal.Metadata
+			}
+			for _, alertPolicy := range typedDoc.Spec.AlertPoliciesInternal {
+				if typedDoc.Spec.AlertPoliciesInternal[0].Kind != "" {
+					alertPolicy.Spec.Metadata = alertPolicy.Metadata
+					for _, cond := range alertPolicy.Spec.ConditionsInternal {
+						if alertPolicy.Spec.ConditionsInternal[0].Kind != "" {
+							cond.Spec.Metadata = cond.Metadata
+							alertPolicy.Spec.Conditions = append(alertPolicy.Spec.Conditions, cond.Spec)
+						} else {
+							alertPolicy.Spec.Conditions = append(alertPolicy.Spec.Conditions, AlertConditionModel{
+								ConditionRef: cond.ConditionRef,
+							})
+						}
+					}
+					alertPolicy.Spec.ConditionsInternal = nil
+					typedDoc.Spec.AlertPolicies = append(typedDoc.Spec.AlertPolicies, alertPolicy.Spec)
+				} else {
+					typedDoc.Spec.AlertPolicies = append(typedDoc.Spec.AlertPolicies, AlertPolicyModel{
+						AlertPolicyRef: alertPolicy.AlertPolicyRef,
+					})
+				}
+			}
+			for i, objective := range typedDoc.Spec.Objectives {
+				if objective.IndicatorInternal.Kind != "" {
+					objective.Indicator = objective.IndicatorInternal.Spec
+					objective.Indicator.Metadata = objective.IndicatorInternal.Metadata
+				}
+				objective.IndicatorInternal = YamlSpecTyped[SLIModel]{}
+				typedDoc.Spec.Objectives[i] = objective
+			}
+			typedDoc.Spec.AlertPoliciesInternal = nil
+			typedDoc.Spec.IndicatorInternal = YamlSpecTyped[SLIModel]{}
 			data.Slos[doc.Metadata.Name] = typedDoc.Spec
 		default:
-			resp.Diagnostics.AddError(
+			diagnostics.AddError(
 				"Unexpected Kind", "Unknown kind: "+doc.Kind,
 			)
-			return
+			return data, errors.New("unknown kind: " + doc.Kind)
 		}
 
 		if err != nil {
-			resp.Diagnostics.AddError("Decode Error", err.Error())
-			return
+			diagnostics.AddError("Decode Error", err.Error())
+			return data, err
 		}
 	}
 
@@ -426,10 +465,12 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 				objective.Indicator = data.Slis[objective.IndicatorRef]
 				slo.Objectives[j] = objective
 			}
+			if objective.CompositeWeight == 0 {
+				slo.Objectives[j].CompositeWeight = 1
+			}
 		}
 		data.Slos[k] = slo
 	}
 
-	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	return data, nil
 }
