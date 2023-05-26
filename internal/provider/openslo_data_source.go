@@ -262,7 +262,7 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	data, err := GetOpenSloData(readData.Yaml_input.String(), &resp.Diagnostics)
+	data, err := GetOpenSloData(readData.Yaml_input.ValueString(), &resp.Diagnostics)
 	if err != nil {
 		return
 	}
