@@ -36,7 +36,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		// TODO: Update this string with the published name of your provider.
-		Address: "registry.terraform.io/simon_boyer/openslo",
+		Address: "registry.terraform.io/Simon-Boyer/openslo",
 		Debug:   debug,
 	}
 
