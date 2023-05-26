@@ -428,16 +428,29 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 	for k := range data.Slis {
 		sli := data.Slis[k]
 		if sli.ThresholdMetric.MetricSource.MetricSourceRef != "" {
-			sli.ThresholdMetric.MetricSource = data.Datasources[sli.ThresholdMetric.MetricSource.MetricSourceRef]
+			ref := sli.ThresholdMetric.MetricSource.MetricSourceRef
+			sli.ThresholdMetric.MetricSource = data.Datasources[ref]
+			sli.ThresholdMetric.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Bad.MetricSource.MetricSourceRef != "" {
-			sli.RatioMetric.Bad.MetricSource = data.Datasources[sli.RatioMetric.Bad.MetricSource.MetricSourceRef]
+			ref := sli.RatioMetric.Bad.MetricSource.MetricSourceRef
+			sli.RatioMetric.Bad.MetricSource = data.Datasources[ref]
+			sli.RatioMetric.Bad.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Good.MetricSource.MetricSourceRef != "" {
-			sli.RatioMetric.Good.MetricSource = data.Datasources[sli.RatioMetric.Good.MetricSource.MetricSourceRef]
+			ref := sli.RatioMetric.Good.MetricSource.MetricSourceRef
+			sli.RatioMetric.Good.MetricSource = data.Datasources[ref]
+			sli.RatioMetric.Good.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Raw.MetricSource.MetricSourceRef != "" {
-			sli.RatioMetric.Raw.MetricSource = data.Datasources[sli.RatioMetric.Raw.MetricSource.MetricSourceRef]
+			ref := sli.RatioMetric.Raw.MetricSource.MetricSourceRef
+			sli.RatioMetric.Raw.MetricSource = data.Datasources[ref]
+			sli.RatioMetric.Raw.MetricSource.MetricSourceRef = ref
+		}
+		if sli.RatioMetric.Total.MetricSource.MetricSourceRef != "" {
+			ref := sli.RatioMetric.Total.MetricSource.MetricSourceRef
+			sli.RatioMetric.Total.MetricSource = data.Datasources[ref]
+			sli.RatioMetric.Total.MetricSource.MetricSourceRef = ref
 		}
 		data.Slis[k] = sli
 	}

@@ -567,7 +567,7 @@ spec:
   condition:
     kind: string
     op: enum
-    threshold: number
+    threshold: 1
     lookbackWindow: 1h
     alertAfter: 5m
 ---
@@ -657,10 +657,10 @@ spec:
 
 	alertNotificationTarget := AlertNotificationTargetModel{
 		Metadata: MetadataModel{
-			Name:        "OnCallDevopsMailNotification",
-			DisplayName: "Display name",
+			Name: "OnCallDevopsMailNotification",
 		},
-		Target: "email",
+		Target:      "email",
+		Description: "Notifies by a mail message to the on-call devops mailing group",
 	}
 	alertNotificationTargetWithRef := alertNotificationTarget
 	alertNotificationTargetWithRef.TargetRef = "OnCallDevopsMailNotification"
@@ -678,7 +678,7 @@ spec:
 		},
 	}
 	alertPolicyWithRef := alertPolicy
-	alertPolicyWithRef.AlertPolicyRef = "string"
+	alertPolicyWithRef.AlertPolicyRef = "default"
 
 	sli := SLIModel{
 		Metadata: MetadataModel{
@@ -693,6 +693,7 @@ spec:
 			},
 			Total: MetricModel{
 				MetricSource: DataSourceModel{
+					Type: "datadog",
 					Spec: map[string]string{
 						"query": "sum:api.requests{*}.as_count()",
 					},
@@ -722,7 +723,8 @@ spec:
 		},
 		Objectives: []ObjectiveModel{
 			{
-				Target: 0.995,
+				Target:          0.995,
+				CompositeWeight: 1,
 			},
 		},
 	}
@@ -738,11 +740,6 @@ spec:
 	// and
 	if !reflect.DeepEqual(openslo.Services["my-service"], service) {
 		t.Errorf("Expected %#v, but got %#v", service, openslo.Alert_conditions["my-service"])
-	}
-
-	// and
-	if !reflect.DeepEqual(openslo.Slos["string"], slo) {
-		t.Errorf("Expected %#v, but got %#v", slo, openslo.Slos["string"])
 	}
 
 	// and
@@ -768,6 +765,11 @@ spec:
 	// and
 	if !reflect.DeepEqual(openslo.Slis["default-success-rate"], sli) {
 		t.Errorf("Expected %#v, but got %#v", sli, openslo.Slis["default-success-rate"])
+	}
+
+	// and
+	if !reflect.DeepEqual(openslo.Slos["string"], slo) {
+		t.Errorf("Expected %#v, but got %#v", slo, openslo.Slos["string"])
 	}
 
 }
