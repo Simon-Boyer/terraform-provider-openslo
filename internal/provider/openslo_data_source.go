@@ -262,7 +262,7 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	data, err := GetOpenSloData(readData.Yaml_input.String(), resp.Diagnostics)
+	data, err := GetOpenSloData(readData.Yaml_input.String(), &resp.Diagnostics)
 	if err != nil {
 		return
 	}
@@ -271,7 +271,7 @@ func (d *OpenSloDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloDataSourceModel, error) {
+func GetOpenSloData(yamlInput string, diagnostics *diag.Diagnostics) (OpenSloDataSourceModel, error) {
 	data := OpenSloDataSourceModel{
 		Yaml_input:                 types.StringValue(yamlInput),
 		Datasources:                map[string]DataSourceModel{},
@@ -304,7 +304,7 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 
 		// Make sure we are dealing with an openslo document
 		if doc.ApiVersion != OPENSLO_VERSION {
-			diagnostics.AddWarning("Unexpected api version", fmt.Sprintf("Expected %s, got %s", OPENSLO_VERSION, doc.ApiVersion))
+			diagnostics.AddWarning("Unsupported apiVersion", fmt.Sprintf("Expected %s, got %s", OPENSLO_VERSION, doc.ApiVersion))
 			continue
 		}
 
@@ -393,9 +393,9 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 			data.Slos[doc.Metadata.Name] = typedDoc.Spec
 		default:
 			diagnostics.AddError(
-				"Unexpected Kind", "Unknown kind: "+doc.Kind,
+				"Unsupported kind", "Unknown kind: "+doc.Kind,
 			)
-			return data, errors.New("unknown kind: " + doc.Kind)
+			return data, errors.New("Unknown kind: " + doc.Kind)
 		}
 
 		if err != nil {
@@ -410,6 +410,12 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 			condition := data.Alert_policies[i].Conditions[j]
 			if condition.ConditionRef != "" {
 				linkedCond := data.Alert_conditions[condition.ConditionRef]
+				if linkedCond.Metadata.Name == "" {
+					diagnostics.AddError(
+						"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "AlertCondition", condition.ConditionRef),
+					)
+					return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertCondition", condition.ConditionRef))
+				}
 				linkedCond.ConditionRef = condition.ConditionRef
 				data.Alert_policies[i].Conditions[j] = linkedCond
 			}
@@ -418,6 +424,12 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 			condition := data.Alert_policies[i].NotificationTargets[j]
 			if condition.TargetRef != "" {
 				linkedCond := data.Alert_notification_targets[condition.TargetRef]
+				if linkedCond.Metadata.Name == "" {
+					diagnostics.AddError(
+						"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "AlertNotificationTarget", condition.TargetRef),
+					)
+					return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", condition.TargetRef))
+				}
 				linkedCond.TargetRef = condition.TargetRef
 				data.Alert_policies[i].NotificationTargets[j] = linkedCond
 			}
@@ -430,26 +442,56 @@ func GetOpenSloData(yamlInput string, diagnostics diag.Diagnostics) (OpenSloData
 		if sli.ThresholdMetric.MetricSource.MetricSourceRef != "" {
 			ref := sli.ThresholdMetric.MetricSource.MetricSourceRef
 			sli.ThresholdMetric.MetricSource = data.Datasources[ref]
+			if sli.ThresholdMetric.MetricSource.Metadata.Name == "" {
+				diagnostics.AddError(
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+				)
+				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
+			}
 			sli.ThresholdMetric.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Bad.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Bad.MetricSource.MetricSourceRef
 			sli.RatioMetric.Bad.MetricSource = data.Datasources[ref]
+			if sli.RatioMetric.Bad.MetricSource.Metadata.Name == "" {
+				diagnostics.AddError(
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+				)
+				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
+			}
 			sli.RatioMetric.Bad.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Good.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Good.MetricSource.MetricSourceRef
 			sli.RatioMetric.Good.MetricSource = data.Datasources[ref]
+			if sli.RatioMetric.Good.MetricSource.Metadata.Name == "" {
+				diagnostics.AddError(
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+				)
+				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
+			}
 			sli.RatioMetric.Good.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Raw.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Raw.MetricSource.MetricSourceRef
 			sli.RatioMetric.Raw.MetricSource = data.Datasources[ref]
+			if sli.RatioMetric.Raw.MetricSource.Metadata.Name == "" {
+				diagnostics.AddError(
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+				)
+				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
+			}
 			sli.RatioMetric.Raw.MetricSource.MetricSourceRef = ref
 		}
 		if sli.RatioMetric.Total.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Total.MetricSource.MetricSourceRef
 			sli.RatioMetric.Total.MetricSource = data.Datasources[ref]
+			if sli.RatioMetric.Total.MetricSource.Metadata.Name == "" {
+				diagnostics.AddError(
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+				)
+				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
+			}
 			sli.RatioMetric.Total.MetricSource.MetricSourceRef = ref
 		}
 		data.Slis[k] = sli
