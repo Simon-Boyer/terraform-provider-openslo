@@ -94,9 +94,32 @@ spec:
   - alertPolicyRef: default
   objectives:
   - target: 0.995
+    apiVersion: openslo_synthetics/v1
+    kind: HTTPMonitor
+    metadata:
+        name: my-monitor
+        displayName: My Monitor
+    spec:
+        url: https://my-host.com
+        requests:
+        - name: my-request
+          description: This is a request
+          headers:
+            - name: my-header
+              value: my-value
+          body: test body
+          method: POST
+          path: /my-path
+        - name: my-other-request
+          description: This is a request
+          headers:
+          - name: my-other-header
+            value: my-other-value
+          method: GET
+          path: /my-other-path
 EOF
 }
 
 output "test" {
-  value = data.openslo_openslo.test.slos["string"].objectives[0].target
+  value = data.openslo_openslo.test
 }

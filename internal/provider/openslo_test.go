@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
@@ -42,14 +41,16 @@ func TestOpenSLODatasource_shouldbeValid_singleYamlSpec(t *testing.T) {
 		},
 	}
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 	// then
 	if err != nil {
 		t.Error(err)
 	}
 	// and
-	if !reflect.DeepEqual(openslo.Datasources["my-datasource"], expected) {
-		t.Errorf("Expected %#v, but got %#v", expected, openslo.Datasources["my-datasource"])
+	diff := deep.Equal(openslo.Datasources["my-datasource"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -72,14 +73,16 @@ spec:
 		Description: "This service does blablabla",
 	}
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 	// then
 	if err != nil {
 		t.Error(err)
 	}
 	// and
-	if !reflect.DeepEqual(openslo.Services["my-service"], expected) {
-		t.Errorf("Expected '%#v', but got '%#v'", expected, openslo.Services["my-service"])
+	diff := deep.Equal(openslo.Services["my-service"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -176,7 +179,8 @@ spec:
 	}
 
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 
 	// then
 	if err != nil {
@@ -184,8 +188,9 @@ spec:
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Slis["string"], expected) {
-		t.Errorf("Expected '%#v', but got '%#v'", expected, openslo.Slis["string"])
+	diff := deep.Equal(openslo.Slis["string"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -246,14 +251,16 @@ spec:
 		},
 	}
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 	// then
 	if err != nil {
 		t.Error(err)
 	}
 	// and
-	if !reflect.DeepEqual(openslo.Alert_policies["default"], expected) {
-		t.Errorf("Expected %#v, but got %#v", expected, openslo.Alert_policies["default"])
+	diff := deep.Equal(openslo.Alert_policies["default"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -421,7 +428,8 @@ func TestOpenSLOSLO_shouldbeValid_singleYamlSpec(t *testing.T) {
 	}
 
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 
 	// then
 	if err != nil {
@@ -429,8 +437,9 @@ func TestOpenSLOSLO_shouldbeValid_singleYamlSpec(t *testing.T) {
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Slos["string"], expected) {
-		t.Errorf("Expected %#v, but got %#v", expected, openslo.Slos["string"])
+	diff := deep.Equal(openslo.Slos["string"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -471,7 +480,8 @@ spec:
 	}
 
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 
 	// then
 	if err != nil {
@@ -479,8 +489,9 @@ spec:
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Alert_conditions["string"], expected) {
-		t.Errorf("Expected %#v, but got %#v", expected, openslo.Alert_conditions["string"])
+	diff := deep.Equal(openslo.Alert_conditions["string"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -508,7 +519,8 @@ spec:
 	}
 
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 
 	// then
 	if err != nil {
@@ -516,8 +528,9 @@ spec:
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], expected) {
-		t.Errorf("Expected %#v, but got %#v", expected, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
+	diff := deep.Equal(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], expected)
+	if diff != nil {
+		t.Error(diff)
 	}
 }
 
@@ -729,7 +742,8 @@ spec:
 	}
 
 	// when
-	openslo, err := GetOpenSloData(yamlSpec, &diag.Diagnostics{})
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diag.Diagnostics{})
 
 	// then
 	if err != nil {
@@ -737,42 +751,45 @@ spec:
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Services["my-service"], service) {
-		t.Errorf("Expected service %#v, but got %#v", service, openslo.Alert_conditions["my-service"])
-	}
-
-	// and
-	if !reflect.DeepEqual(openslo.Datasources["default"], dataSource) {
-		t.Errorf("Expected datasource %#v, but got %#v", dataSource, openslo.Datasources["default"])
-	}
-
-	// and
-	if !reflect.DeepEqual(openslo.Alert_conditions["string"], alertCondition) {
-		t.Errorf("Expected alertcondition %#v, but got %#v", alertCondition, openslo.Alert_conditions["string"])
-	}
-
-	// and
-	if !reflect.DeepEqual(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], alertNotificationTarget) {
-		t.Errorf("Expected alertnotificationtarget %#v, but got %#v", alertNotificationTarget, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
-	}
-
-	// and
-	if !reflect.DeepEqual(openslo.Alert_policies["default"], alertPolicy) {
-		t.Errorf("Expected alertpolicy %#v, but got %#v", alertPolicy, openslo.Alert_policies["default"])
-	}
-
-	// and
-	diff := deep.Equal(openslo.Slis["default-success-rate"], sli)
+	diff := deep.Equal(openslo.Services["my-service"], service)
 	if diff != nil {
-		t.Errorf("compare failed: %v", diff)
+		t.Error(diff)
 	}
-	// if !reflect.DeepEqual(openslo.Slis["default-success-rate"], sli) {
-	// 	t.Errorf("Expected sli %#v, but got %#v", sli, openslo.Slis["default-success-rate"])
-	// }
 
 	// and
-	if !reflect.DeepEqual(openslo.Slos["string"], slo) {
-		t.Errorf("Expected slo %#v, but got %#v", slo, openslo.Slos["string"])
+	diff = deep.Equal(openslo.Datasources["default"], dataSource)
+	if diff != nil {
+		t.Error(diff)
+	}
+
+	// and
+	diff = deep.Equal(openslo.Alert_conditions["string"], alertCondition)
+	if diff != nil {
+		t.Error(diff)
+	}
+
+	// and
+	diff = deep.Equal(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], alertNotificationTarget)
+	if diff != nil {
+		t.Error(diff)
+	}
+
+	// and
+	diff = deep.Equal(openslo.Alert_policies["default"], alertPolicy)
+	if diff != nil {
+		t.Error(diff)
+	}
+
+	// and
+	diff = deep.Equal(openslo.Slis["default-success-rate"], sli)
+	if diff != nil {
+		t.Error(diff)
+	}
+
+	// and
+	diff = deep.Equal(openslo.Slos["string"], slo)
+	if diff != nil {
+		t.Error(diff)
 	}
 
 }
@@ -791,7 +808,8 @@ spec:
 
 	// when
 	diagnostic := diag.Diagnostics{}
-	data, err := GetOpenSloData(yamlSpec, &diagnostic)
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diagnostic)
 
 	// then
 	if err != nil {
@@ -799,8 +817,8 @@ spec:
 	}
 
 	// and
-	if len(data.Services) != 0 {
-		t.Errorf("Expected 0 services, but got %d", len(data.Services))
+	if len(openslo.Services) != 0 {
+		t.Errorf("Expected 0 services, but got %d", len(openslo.Services))
 	}
 
 	// and
@@ -837,7 +855,8 @@ spec:
 
 	// when
 	diagnostics := diag.Diagnostics{}
-	_, err := GetOpenSloData(yamlSpec, &diagnostics)
+	openslo := OpenSloDataSource{}
+	err := openslo.GetOpenSloData(yamlSpec, &diagnostics)
 
 	// then
 	if err == nil {
@@ -855,8 +874,8 @@ spec:
 	}
 
 	// and
-	if !strings.Contains(diagnostics.Errors()[0].Summary(), "Unsupported kind") {
-		t.Errorf("Expected 'Unsupported kind', but got %s", diagnostics.Errors()[0].Summary())
+	if !strings.Contains(diagnostics.Errors()[0].Summary(), "Decode Error") {
+		t.Errorf("Expected 'Decode Error', but got %s", diagnostics.Errors()[0].Summary())
 	}
 }
 
@@ -885,8 +904,10 @@ spec:
 
 	// when
 	diagnostics := diag.Diagnostics{}
-	_, err1 := GetOpenSloData(yamlSpec1, &diagnostics)
-	_, err2 := GetOpenSloData(yamlSpec2, &diagnostics)
+	openslo1 := OpenSloDataSource{}
+	openslo2 := OpenSloDataSource{}
+	err1 := openslo1.GetOpenSloData(yamlSpec1, &diagnostics)
+	err2 := openslo2.GetOpenSloData(yamlSpec2, &diagnostics)
 
 	// then
 	if err1 == nil {
@@ -904,8 +925,12 @@ spec:
 	}
 
 	// and
-	if !strings.Contains(diagnostics.Errors()[0].Summary(), "Bad reference") || !strings.Contains(diagnostics.Errors()[1].Summary(), "Bad reference") {
-		t.Errorf("Expected 'Bad reference', but got %s", diagnostics.Errors()[0].Summary())
+	if !strings.Contains(diagnostics.Errors()[0].Summary(), "OpenSLO Post Extraction Error") {
+		t.Errorf("Expected 'OpenSLO Post Extraction Error', but got %s", diagnostics.Errors()[0].Summary())
+	}
+
+	if !strings.Contains(diagnostics.Errors()[1].Detail(), "bad reference") {
+		t.Errorf("Expected 'Bad reference', but got %s", diagnostics.Errors()[1].Summary())
 	}
 }
 
@@ -983,11 +1008,16 @@ spec:
 
 	// when
 	diagnostics := diag.Diagnostics{}
-	_, err_threshold := GetOpenSloData(yamlSpec_threshold, &diagnostics)
-	_, err_bad := GetOpenSloData(yamlSpec_bad, &diagnostics)
-	_, err_good := GetOpenSloData(yamlSpec_good, &diagnostics)
-	_, err_total := GetOpenSloData(yamlSpec_total, &diagnostics)
-	_, err_raw := GetOpenSloData(yamlSpec_raw, &diagnostics)
+	openslo_threshold := OpenSloDataSource{}
+	openslo_bad := OpenSloDataSource{}
+	openslo_good := OpenSloDataSource{}
+	openslo_total := OpenSloDataSource{}
+	openslo_raw := OpenSloDataSource{}
+	err_threshold := openslo_threshold.GetOpenSloData(yamlSpec_threshold, &diagnostics)
+	err_bad := openslo_bad.GetOpenSloData(yamlSpec_bad, &diagnostics)
+	err_good := openslo_good.GetOpenSloData(yamlSpec_good, &diagnostics)
+	err_total := openslo_total.GetOpenSloData(yamlSpec_total, &diagnostics)
+	err_raw := openslo_raw.GetOpenSloData(yamlSpec_raw, &diagnostics)
 
 	// then
 	if err_threshold == nil {
@@ -1018,12 +1048,12 @@ spec:
 
 	// and
 
-	if !strings.Contains(diagnostics.Errors()[0].Summary(), "Bad reference") ||
-		!strings.Contains(diagnostics.Errors()[1].Summary(), "Bad reference") ||
-		!strings.Contains(diagnostics.Errors()[2].Summary(), "Bad reference") ||
-		!strings.Contains(diagnostics.Errors()[3].Summary(), "Bad reference") ||
-		!strings.Contains(diagnostics.Errors()[4].Summary(), "Bad reference") {
+	if !strings.Contains(diagnostics.Errors()[0].Summary(), "OpenSLO Post Extraction Error") ||
+		!strings.Contains(diagnostics.Errors()[1].Summary(), "OpenSLO Post Extraction Error") ||
+		!strings.Contains(diagnostics.Errors()[2].Summary(), "OpenSLO Post Extraction Error") ||
+		!strings.Contains(diagnostics.Errors()[3].Summary(), "OpenSLO Post Extraction Error") ||
+		!strings.Contains(diagnostics.Errors()[4].Summary(), "OpenSLO Post Extraction Error") {
 
-		t.Errorf("Expected 'Bad reference', but got %s", diagnostics.Errors()[0].Summary())
+		t.Errorf("Expected 'OpenSLO Post Extraction Error', but got %s", diagnostics.Errors()[0].Summary())
 	}
 }
