@@ -48,8 +48,15 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 
 	var MetadataSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"name":         types.StringType, // test
+			"name":         types.StringType,
 			"display_name": types.StringType,
+			"namespace":    types.StringType,
+			"labels": types.MapType{
+				ElemType: types.StringType,
+			},
+			"annotations": types.MapType{
+				ElemType: types.StringType,
+			},
 		},
 	}
 
@@ -59,12 +66,8 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 			"connection_details": types.MapType{
 				ElemType: types.StringType,
 			},
-			"metadata":          MetadataSchema,
-			"metric_source_ref": types.StringType,
-			"spec": types.MapType{
-				ElemType: types.StringType,
-			},
-			"type": types.StringType,
+			"metadata": MetadataSchema,
+			"type":     types.StringType,
 		},
 	}
 
@@ -104,9 +107,20 @@ func (d *OpenSloDataSource) Schema(ctx context.Context, req datasource.SchemaReq
 		},
 	}
 
+	var MetricSourceSchema = types.ObjectType{
+		AttrTypes: map[string]attr.Type{
+			"type": types.StringType,
+			"spec": types.MapType{
+				ElemType: types.StringType,
+			},
+			"datasource":        DataSourceSchema,
+			"metric_source_ref": types.StringType,
+		},
+	}
+
 	var MetricSchema = types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"metric_source": DataSourceSchema,
+			"metric_source": MetricSourceSchema,
 		},
 	}
 
@@ -441,58 +455,73 @@ func GetOpenSloData(yamlInput string, diagnostics *diag.Diagnostics) (OpenSloDat
 		sli := data.Slis[k]
 		if sli.ThresholdMetric.MetricSource.MetricSourceRef != "" {
 			ref := sli.ThresholdMetric.MetricSource.MetricSourceRef
-			sli.ThresholdMetric.MetricSource = data.Datasources[ref]
-			if sli.ThresholdMetric.MetricSource.Metadata.Name == "" {
+			sli.ThresholdMetric.MetricSource.DataSource = data.Datasources[ref]
+			if sli.ThresholdMetric.MetricSource.DataSource.Metadata.Name == "" {
 				diagnostics.AddError(
-					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
+					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DataSource", ref),
 				)
 				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
 			}
 			sli.ThresholdMetric.MetricSource.MetricSourceRef = ref
+			if sli.ThresholdMetric.MetricSource.DataSource.Type != "" {
+				sli.ThresholdMetric.MetricSource.Type = sli.ThresholdMetric.MetricSource.DataSource.Type
+			}
 		}
 		if sli.RatioMetric.Bad.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Bad.MetricSource.MetricSourceRef
-			sli.RatioMetric.Bad.MetricSource = data.Datasources[ref]
-			if sli.RatioMetric.Bad.MetricSource.Metadata.Name == "" {
+			sli.RatioMetric.Bad.MetricSource.DataSource = data.Datasources[ref]
+			if sli.RatioMetric.Bad.MetricSource.DataSource.Metadata.Name == "" {
 				diagnostics.AddError(
 					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
 				)
 				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
 			}
 			sli.RatioMetric.Bad.MetricSource.MetricSourceRef = ref
+			if sli.RatioMetric.Bad.MetricSource.DataSource.Type != "" {
+				sli.RatioMetric.Bad.MetricSource.Type = sli.RatioMetric.Bad.MetricSource.DataSource.Type
+			}
 		}
 		if sli.RatioMetric.Good.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Good.MetricSource.MetricSourceRef
-			sli.RatioMetric.Good.MetricSource = data.Datasources[ref]
-			if sli.RatioMetric.Good.MetricSource.Metadata.Name == "" {
+			sli.RatioMetric.Good.MetricSource.DataSource = data.Datasources[ref]
+			if sli.RatioMetric.Good.MetricSource.DataSource.Metadata.Name == "" {
 				diagnostics.AddError(
 					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
 				)
 				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
 			}
 			sli.RatioMetric.Good.MetricSource.MetricSourceRef = ref
+			if sli.RatioMetric.Good.MetricSource.DataSource.Type != "" {
+				sli.RatioMetric.Good.MetricSource.Type = sli.RatioMetric.Good.MetricSource.DataSource.Type
+			}
 		}
 		if sli.RatioMetric.Raw.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Raw.MetricSource.MetricSourceRef
-			sli.RatioMetric.Raw.MetricSource = data.Datasources[ref]
-			if sli.RatioMetric.Raw.MetricSource.Metadata.Name == "" {
+			sli.RatioMetric.Raw.MetricSource.DataSource = data.Datasources[ref]
+			if sli.RatioMetric.Raw.MetricSource.DataSource.Metadata.Name == "" {
 				diagnostics.AddError(
 					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
 				)
 				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
 			}
 			sli.RatioMetric.Raw.MetricSource.MetricSourceRef = ref
+			if sli.RatioMetric.Raw.MetricSource.DataSource.Type != "" {
+				sli.RatioMetric.Raw.MetricSource.Type = sli.RatioMetric.Raw.MetricSource.DataSource.Type
+			}
 		}
 		if sli.RatioMetric.Total.MetricSource.MetricSourceRef != "" {
 			ref := sli.RatioMetric.Total.MetricSource.MetricSourceRef
-			sli.RatioMetric.Total.MetricSource = data.Datasources[ref]
-			if sli.RatioMetric.Total.MetricSource.Metadata.Name == "" {
+			sli.RatioMetric.Total.MetricSource.DataSource = data.Datasources[ref]
+			if sli.RatioMetric.Total.MetricSource.DataSource.Metadata.Name == "" {
 				diagnostics.AddError(
 					"Bad reference", fmt.Sprintf("No object of kind %s with name %s", "DatasSource", ref),
 				)
 				return data, errors.New(fmt.Sprintf("Bad reference: No object of kind %s with name %s", "AlertNotificationTarget", ref))
 			}
 			sli.RatioMetric.Total.MetricSource.MetricSourceRef = ref
+			if sli.RatioMetric.Total.MetricSource.DataSource.Type != "" {
+				sli.RatioMetric.Total.MetricSource.Type = sli.RatioMetric.Total.MetricSource.DataSource.Type
+			}
 		}
 		data.Slis[k] = sli
 	}

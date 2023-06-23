@@ -14,16 +14,17 @@ type YamlSpecTyped[T any] struct {
 }
 
 type MetadataModel struct {
-	Name        string `tfsdk:"name" yaml:"name"`
-	DisplayName string `tfsdk:"display_name" yaml:"displayName"`
+	Name        string            `tfsdk:"name" yaml:"name"`
+	DisplayName string            `tfsdk:"display_name" yaml:"displayName"`
+	Namespace   string            `tfsdk:"namespace" yaml:"namespace"`
+	Labels      map[string]string `tfsdk:"labels" yaml:"labels"`
+	Annotations map[string]string `tfsdk:"annotations" yaml:"annotations"`
 }
 
 type DataSourceModel struct {
 	Type              string            `tfsdk:"type" yaml:"type"`
 	ConnectionDetails map[string]string `tfsdk:"connection_details" yaml:"connectionDetails"`
 	Metadata          MetadataModel     `tfsdk:"metadata" yaml:"metadata"`
-	MetricSourceRef   string            `tfsdk:"metric_source_ref" yaml:"metricSourceRef"`
-	Spec              map[string]string `tfsdk:"spec" yaml:"spec"`
 	Description       string            `tfsdk:"description" yaml:"description"`
 }
 
@@ -89,7 +90,14 @@ type SLIModel struct {
 }
 
 type MetricModel struct {
-	MetricSource DataSourceModel `tfsdk:"metric_source" yaml:"metricSource,omitempty"`
+	MetricSource MetricSource `tfsdk:"metric_source" yaml:"metricSource,omitempty"`
+}
+
+type MetricSource struct {
+	MetricSourceRef string                 `tfsdk:"metric_source_ref" yaml:"metricSourceRef"`
+	DataSource      DataSourceModel        `tfsdk:"datasource" yaml:"-"`
+	Type            string                 `tfsdk:"type" yaml:"type"`
+	Spec            map[string]interface{} `tfsdk:"spec" yaml:"spec"`
 }
 
 type RatioMetricModel struct {

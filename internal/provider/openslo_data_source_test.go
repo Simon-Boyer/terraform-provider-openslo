@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -24,8 +25,6 @@ func TestOpenSLODatasource_shouldbeValid_singleYamlSpec(t *testing.T) {
         port: my-port
         user: my-user
         password: my-password
-      spec:
-        custom-parameter: my-custom-parameter
 `
 
 	expected := DataSourceModel{
@@ -40,9 +39,6 @@ func TestOpenSLODatasource_shouldbeValid_singleYamlSpec(t *testing.T) {
 			"port":     "my-port",
 			"user":     "my-user",
 			"password": "my-password",
-		},
-		Spec: map[string]string{
-			"custom-parameter": "my-custom-parameter",
 		},
 	}
 	// when
@@ -134,9 +130,9 @@ spec:
 		},
 		Description: "string",
 		ThresholdMetric: MetricModel{
-			MetricSource: DataSourceModel{
+			MetricSource: MetricSource{
 				Type: "string",
-				Spec: map[string]string{
+				Spec: map[string]interface{}{
 					"query": "a_query",
 				},
 			},
@@ -144,34 +140,34 @@ spec:
 		RatioMetric: RatioMetricModel{
 			Counter: true,
 			Good: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "string",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "a_query",
 					},
 				},
 			},
 			Bad: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "string",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "a_query",
 					},
 				},
 			},
 			Total: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "string",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "a_query",
 					},
 				},
 			},
 			RawType: "success",
 			Raw: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "string",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "a_query",
 					},
 				},
@@ -349,9 +345,9 @@ func TestOpenSLOSLO_shouldbeValid_singleYamlSpec(t *testing.T) {
 			},
 			Description: "string",
 			ThresholdMetric: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "string",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "a_query",
 					},
 				},
@@ -380,9 +376,9 @@ func TestOpenSLOSLO_shouldbeValid_singleYamlSpec(t *testing.T) {
 					},
 					Description: "string",
 					ThresholdMetric: MetricModel{
-						MetricSource: DataSourceModel{
+						MetricSource: MetricSource{
 							Type: "string",
-							Spec: map[string]string{
+							Spec: map[string]interface{}{
 								"query": "a_query",
 							},
 						},
@@ -536,8 +532,6 @@ metadata:
   displayName: Default
 spec:
   type: datadog
-  spec:
-    query: sum:api.requests.status_ok{*}.as_count()
 ---
 apiVersion: openslo/v1
 kind: SLI
@@ -551,11 +545,13 @@ spec:
     good:
       metricSource:
         metricSourceRef: default
+        spec:
+          query: "sum:api.requests{200}.as_count()"
     total:
       metricSource:
         type: datadog
         spec:
-          query: sum:api.requests{*}.as_count()
+          query: "sum:api.requests{*}.as_count()"
 ---
 apiVersion: openslo/v1
 kind: AlertCondition
@@ -623,12 +619,7 @@ spec:
 			DisplayName: "Default",
 		},
 		Type: "datadog",
-		Spec: map[string]string{
-			"query": "sum:api.requests.status_ok{*}.as_count()",
-		},
 	}
-	dataSourceWithRef := dataSource
-	dataSourceWithRef.MetricSourceRef = "default"
 
 	service := ServiceModel{
 		Metadata: MetadataModel{
@@ -690,12 +681,19 @@ spec:
 		RatioMetric: RatioMetricModel{
 			Counter: true,
 			Good: MetricModel{
-				MetricSource: dataSourceWithRef,
+				MetricSource: MetricSource{
+					MetricSourceRef: "default",
+					Type:            "datadog",
+					Spec: map[string]interface{}{
+						"query": "sum:api.requests{200}.as_count()",
+					},
+					DataSource: dataSource,
+				},
 			},
 			Total: MetricModel{
-				MetricSource: DataSourceModel{
+				MetricSource: MetricSource{
 					Type: "datadog",
-					Spec: map[string]string{
+					Spec: map[string]interface{}{
 						"query": "sum:api.requests{*}.as_count()",
 					},
 				},
@@ -740,37 +738,41 @@ spec:
 
 	// and
 	if !reflect.DeepEqual(openslo.Services["my-service"], service) {
-		t.Errorf("Expected %#v, but got %#v", service, openslo.Alert_conditions["my-service"])
+		t.Errorf("Expected service %#v, but got %#v", service, openslo.Alert_conditions["my-service"])
 	}
 
 	// and
 	if !reflect.DeepEqual(openslo.Datasources["default"], dataSource) {
-		t.Errorf("Expected %#v, but got %#v", dataSource, openslo.Datasources["default"])
+		t.Errorf("Expected datasource %#v, but got %#v", dataSource, openslo.Datasources["default"])
 	}
 
 	// and
 	if !reflect.DeepEqual(openslo.Alert_conditions["string"], alertCondition) {
-		t.Errorf("Expected %#v, but got %#v", alertCondition, openslo.Alert_conditions["string"])
+		t.Errorf("Expected alertcondition %#v, but got %#v", alertCondition, openslo.Alert_conditions["string"])
 	}
 
 	// and
 	if !reflect.DeepEqual(openslo.Alert_notification_targets["OnCallDevopsMailNotification"], alertNotificationTarget) {
-		t.Errorf("Expected %#v, but got %#v", alertNotificationTarget, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
+		t.Errorf("Expected alertnotificationtarget %#v, but got %#v", alertNotificationTarget, openslo.Alert_notification_targets["OnCallDevopsMailNotification"])
 	}
 
 	// and
 	if !reflect.DeepEqual(openslo.Alert_policies["default"], alertPolicy) {
-		t.Errorf("Expected %#v, but got %#v", alertPolicy, openslo.Alert_policies["default"])
+		t.Errorf("Expected alertpolicy %#v, but got %#v", alertPolicy, openslo.Alert_policies["default"])
 	}
 
 	// and
-	if !reflect.DeepEqual(openslo.Slis["default-success-rate"], sli) {
-		t.Errorf("Expected %#v, but got %#v", sli, openslo.Slis["default-success-rate"])
+	diff := deep.Equal(openslo.Slis["default-success-rate"], sli)
+	if diff != nil {
+		t.Errorf("compare failed: %v", diff)
 	}
+	// if !reflect.DeepEqual(openslo.Slis["default-success-rate"], sli) {
+	// 	t.Errorf("Expected sli %#v, but got %#v", sli, openslo.Slis["default-success-rate"])
+	// }
 
 	// and
 	if !reflect.DeepEqual(openslo.Slos["string"], slo) {
-		t.Errorf("Expected %#v, but got %#v", slo, openslo.Slos["string"])
+		t.Errorf("Expected slo %#v, but got %#v", slo, openslo.Slos["string"])
 	}
 
 }
