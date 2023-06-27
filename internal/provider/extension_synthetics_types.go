@@ -21,12 +21,20 @@ type HTTPMonitorModel struct {
 }
 
 type RequestModel struct {
-	Name        string        `tfsdk:"name" yaml:"name"`
-	Description string        `tfsdk:"description" yaml:"description"`
-	Headers     []HeaderModel `tfsdk:"headers" yaml:"headers"`
-	Body        string        `tfsdk:"body" yaml:"body"`
-	Method      HTTPMethod    `tfsdk:"method" yaml:"method"`
-	Path        string        `tfsdk:"path" yaml:"path"`
+	Name             string        `tfsdk:"name" yaml:"name"`
+	Description      string        `tfsdk:"description" yaml:"description"`
+	Headers          []HeaderModel `tfsdk:"headers" yaml:"headers"`
+	Body             string        `tfsdk:"body" yaml:"body"`
+	Method           HTTPMethod    `tfsdk:"method" yaml:"method"`
+	Path             string        `tfsdk:"path" yaml:"path"`
+	ExpectedResponse ResponseModel `tfsdk:"expected_response" yaml:"expectedResponse"`
+}
+
+type ResponseModel struct {
+	Codes                   []int  `tfsdk:"codes" yaml:"code"`
+	PayloadContains         string `tfsdk:"payload_contains" yaml:"payloadContains"`
+	PayloadNotContains      string `tfsdk:"payload_not_contains" yaml:"payloadNotContains"`
+	DynatracePostProcessing string `tfdsk:"dt_postprocessing" yaml:"dynatrace_postprocessing"`
 }
 
 type HeaderModel struct {
