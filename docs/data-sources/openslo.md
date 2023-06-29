@@ -274,14 +274,14 @@ Read-Only:
 
 - `body` (String)
 - `description` (String)
-- `expected_responses` (Object) (see [below for nested schema](#nestedobjatt--extension_httpmonitor--requests--expected_responses))
+- `expected_response` (Object) (see [below for nested schema](#nestedobjatt--extension_httpmonitor--requests--expected_response))
 - `headers` (Object) (see [below for nested schema](#nestedobjatt--extension_httpmonitor--requests--headers))
 - `method` (String)
 - `name` (String)
 - `path` (String)
 
-<a id="nestedobjatt--extension_httpmonitor--requests--expected_responses"></a>
-### Nested Schema for `extension_httpmonitor.requests.expected_responses`
+<a id="nestedobjatt--extension_httpmonitor--requests--expected_response"></a>
+### Nested Schema for `extension_httpmonitor.requests.expected_response`
 
 Read-Only:
 

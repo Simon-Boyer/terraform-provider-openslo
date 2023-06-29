@@ -20,7 +20,7 @@ var RequestSchema = types.ObjectType{
 		"body":        types.StringType,
 		"method":      types.StringType,
 		"path":        types.StringType,
-		"expected_responses": types.ObjectType{
+		"expected_response": types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"codes":                types.NumberType,
 				"payload_contains":     types.StringType,
