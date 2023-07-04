@@ -34,7 +34,7 @@ type ResponseModel struct {
 	Codes                   []int  `tfsdk:"codes" yaml:"code"`
 	PayloadContains         string `tfsdk:"payload_contains" yaml:"payloadContains"`
 	PayloadNotContains      string `tfsdk:"payload_not_contains" yaml:"payloadNotContains"`
-	DynatracePostProcessing string `tfdsk:"dt_postprocessing" yaml:"dynatrace_postprocessing"`
+	DynatracePostProcessing string `tfsdk:"dt_postprocessing" yaml:"dynatrace_postprocessing"`
 }
 
 type HeaderModel struct {

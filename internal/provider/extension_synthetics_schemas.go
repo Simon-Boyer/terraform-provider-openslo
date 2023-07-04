@@ -16,10 +16,12 @@ var RequestSchema = types.ObjectType{
 	AttrTypes: map[string]attr.Type{
 		"name":        types.StringType,
 		"description": types.StringType,
-		"headers":     HeaderSchema,
-		"body":        types.StringType,
-		"method":      types.StringType,
-		"path":        types.StringType,
+		"headers": types.ListType{
+			ElemType: HeaderSchema,
+		},
+		"body":   types.StringType,
+		"method": types.StringType,
+		"path":   types.StringType,
 		"expected_response": types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"codes":                types.NumberType,
